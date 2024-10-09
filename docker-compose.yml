@@ -1,0 +1,27 @@
+version: '3.6'
+
+services:
+
+  nrpc:
+
+    image: ${CONTAINER_IMAGE}
+    container_name: ${CONTAINER_NAME}
+    hostname: ${CONTAINER_HOSTNAME}
+    stop_grace_period: 5s
+
+    environment:
+      LANG: en_US.UTF-8      
+
+    ports:
+      - ${CONTAINER_PORT}:1352
+
+    volumes:
+      - ./${NGINX_CONF}:/etc/nginx/nginx.conf
+
+    networks:
+      server_net:
+
+networks:
+
+  server_net:
+    driver: bridge
