@@ -1,6 +1,6 @@
 
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
-ARG NGINX_VER=1.27.2
+ARG NGINX_VER=$NGINX_VER
 FROM $BASE_IMAGE
 
 ARG NGINX_VER=$NGINX_VER

@@ -1,9 +1,17 @@
 #!/bin/bash
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2024 - APACHE 2.0 see LICENSE
 ############################################################################
 
-BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
+
+if [ -z "$BASE_IMAGE" ]; then
+  BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
+fi
+
+
+if [ -z "$NGINX_VER" ]; then
+  NGINX_VER=1.27.2
+fi
 
 export BUILDKIT_PROGRESS=plain
 
