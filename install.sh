@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 ############################################################################
 # Copyright Nash!Com, Daniel Nashed 2023 - APACHE 2.0 see LICENSE
 ############################################################################
@@ -21,29 +21,32 @@ header()
 
 install_package()
 {
- if [ -x /usr/bin/zypper ]; then
-   /usr/bin/zypper install -y "$@"
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper install -y "$@"
 
- elif [ -x /usr/bin/dnf ]; then
-   /usr/bin/dnf install -y "$@"
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf install -y "$@"
 
- elif [ -x /usr/bin/tdnf ]; then
-   /usr/bin/tdnf install -y "$@"
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf install -y "$@"
 
- elif [ -x /usr/bin/microdnf ]; then
-   /usr/bin/microdnf install -y "$@"
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf install -y "$@"
 
- elif [ -x /usr/bin/yum ]; then
-   /usr/bin/yum install -y "$@"
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum install -y "$@"
 
- elif [ -x /usr/bin/apt-get ]; then
-   /usr/bin/apt-get install -y "$@"
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get install -y "$@"
 
- else
-  echo "No package manager found!"
-  exit 1
+   elif [ -x /sbin/apk ]; then
+    /sbin/apk add "$@"
 
- fi
+  else
+    echo "No package manager found!"
+    exit 1
+
+  fi
 }
 
 install_packages()
@@ -56,23 +59,26 @@ install_packages()
 
 remove_package()
 {
- if [ -x /usr/bin/zypper ]; then
-   /usr/bin/zypper rm -y "$@"
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper rm -y "$@"
 
- elif [ -x /usr/bin/dnf ]; then
-   /usr/bin/dnf remove -y "$@"
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf remove -y "$@"
 
- elif [ -x /usr/bin/tdnf ]; then
-   /usr/bin/tdnf remove -y "$@"
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf remove -y "$@"
 
- elif [ -x /usr/bin/microdnf ]; then
-   /usr/bin/microdnf remove -y "$@"
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf remove -y "$@"
 
- elif [ -x /usr/bin/yum ]; then
-   /usr/bin/yum remove -y "$@"
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum remove -y "$@"
 
- elif [ -x /usr/bin/apt-get ]; then
-   /usr/bin/apt-get remove -y "$@"
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get remove -y "$@"
+
+  elif [ -x /sbin/apk ]; then
+    /sbin/apk del "$@"
 
  fi
 }
@@ -112,6 +118,11 @@ check_linux_update()
 
     header "Updating Linux via yum"
     /usr/bin/yum update -y
+
+  elif [ -x /sbin/apk ]; then
+
+    header "Updating Linux via apk"
+    /sbin/apk update
 
   elif [ -x /usr/bin/apt-get ]; then
 
@@ -164,14 +175,25 @@ clean_linux_repo_cache()
 
     header "Cleaning apt cache"
     /usr/bin/apt-get clean
+
+  elif [ -x /sbin/apk ]; then
+
+    header "Cleaning apt cache"
+    /sbin/apk cache clean
   fi
 }
 
 # --- End Helper functions ---
 
 
-#check_linux_update
-install_packages hostname gettext bind-utils findutils shadow-utils
+check_linux_update
+
+if [ -x /sbin/apk ]; then
+  # Alpine package names are different
+  install_packages gettext findutils shadow pcre
+else
+  install_packages hostname gettext bind-utils findutils shadow-utils
+fi
 
 useradd nginx -U
 
@@ -186,4 +208,5 @@ chmod 550 /ngx_stream_nrpc_preread_module.so
 chmod 440 /nginx.conf
 
 check_linux_update
+clean_linux_repo_cache
 
