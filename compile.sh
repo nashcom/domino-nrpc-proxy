@@ -162,7 +162,7 @@ if [ -x /sbin/apk ]; then
   # Alpine package names are different
   install_packages tar gzip gcc g++ make curl pcre-dev zlib-dev openssl-dev zlib-devel pcre-devel
 else
-  install_packages tar gzip gcc make zlib-devel pcre-devel
+  install_packages tar gzip gcc make zlib-devel pcre-devel openssl-devel
 fi
 
 if [ -z "$NGINX_VER" ]; then
