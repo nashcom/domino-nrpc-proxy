@@ -1,12 +1,12 @@
 #!/bin/bash
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023-2024 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
 if [ "$1" = "alpine" ]; then
   BASE_IMAGE=alpine
 elif [ "$1" = "ubi" ]; then
-  BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
+  BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal
 fi
 
 if [ -z "$BASE_IMAGE" ]; then
@@ -14,7 +14,7 @@ if [ -z "$BASE_IMAGE" ]; then
 fi
 
 if [ -z "$NGINX_VER" ]; then
-  NGINX_VER=1.27.2
+  NGINX_VER=1.29.5
 fi
 
 # --------------------

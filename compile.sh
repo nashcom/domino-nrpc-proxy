@@ -1,6 +1,6 @@
 #!/bin/sh
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
 # For testing: If nginx and module are already present, don't start build
@@ -166,7 +166,7 @@ else
 fi
 
 if [ -z "$NGINX_VER" ]; then
-  NGINX_VER=1.23.3
+  NGINX_VER=1.29.5
 fi
 
 curl -L http://nginx.org/download/nginx-$NGINX_VER.tar.gz | tar xz

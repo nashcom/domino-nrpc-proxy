@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2025 - APACHE 2.0 see LICENSE
 ############################################################################
 
 # This script is the main entry point for the NGINX container.
@@ -19,7 +19,7 @@ if [ -z "$NGINX_LOG_LEVEL" ]; then
 fi
 
 if [ -z "$NGINX_REPLACE_DOTS" ]; then
-  export NGINX_REPLACE_DOTS=on
+  export NGINX_REPLACE_DOTS=off
 fi
 
 if [ -z "$NGINX_RESOLVER" ]; then
@@ -57,6 +57,11 @@ export nrpc_preread_domino_server='$nrpc_preread_domino_server'
 export nrpc_preread_server_name='$nrpc_preread_server_name'
 export nrpc_preread_org_name='$nrpc_preread_org_name'
 export name_org='$name_org'
+
+export ssl_preread_server_name='$ssl_preread_server_name'
+export upstream_group='$upstream_group'
+export first_label='$first_label'
+
 
 # Dump environment
 set > /tmp/nginx/env.log

@@ -1,5 +1,5 @@
 
-NGINX_VER=1.27.0
+NGINX_VER=1.29.5
 
 WORK_DIR=$(pwd)
 cd software
