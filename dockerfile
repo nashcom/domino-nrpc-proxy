@@ -1,5 +1,5 @@
 
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
+ARG BASE_IMAGE=alpine
 ARG NGINX_VER=$NGINX_VER
 FROM $BASE_IMAGE
 

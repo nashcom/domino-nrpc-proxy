@@ -6,8 +6,27 @@ on:
       - main
     tags:
       - 'v*'
+    paths:
+      - 'dockerfile'
+      - 'nginx_template.conf'
+      - 'ngx_stream_nrpc_preread_module.c'
+      - 'entrypoint.sh'
+      - '.github/workflows/build.yml'
 
   workflow_dispatch:
+    inputs:
+      base_image:
+        description: 'Base image'
+        required: false
+        default: 'cgr.dev/chainguard/wolfi-base'
+        type: choice
+        options:
+          - cgr.dev/chainguard/wolfi-base
+          - alpine
+
+env:
+  DEFAULT_BASE_IMAGE: cgr.dev/chainguard/wolfi-base
+  NGINX_VER: 1.29.5
 
 jobs:
   build:
@@ -35,23 +54,33 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/nashcom/nginx-nrpc-module
+          images: ghcr.io/nashcom/domino-nrpc-proxy
+          labels: |
+            org.opencontainers.image.title=Domino NRPC Proxy
+            org.opencontainers.image.description=HCL Domino NRPC reverse proxy with custom nginx stream module for the Notes NRPC protocol
+            org.opencontainers.image.vendor=NashCom
+            org.opencontainers.image.authors=Daniel Nashed <nsh@nashcom.de>
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.url=https://github.com/nashcom/nginx-nrpc-module
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=ref,event=branch
             type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BASE_IMAGE=alpine
-            NGINX_VER=1.29.5
+            BASE_IMAGE=${{ github.event.inputs.base_image || env.DEFAULT_BASE_IMAGE }}
+            NGINX_VER=${{ env.NGINX_VER }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
