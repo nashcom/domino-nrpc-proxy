@@ -1,8 +1,8 @@
 /*
 ###########################################################################
 # NRPC Stream pre-read NGINX Module                                       #
-# Version 0.3.0 12.02.2023                                                #
-# (C) Copyright Daniel Nashed/NashCom 2023                                #
+# Version 0.9.0 22.03.2026                                                #
+# (C) Copyright Daniel Nashed/NashCom 2023-2026                           #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
 # you may not use this file except in compliance with the License.        #
@@ -18,11 +18,14 @@
 ###########################################################################
 */
 
-#define NGINX_MODULE_NRPC_PRERED_VERSION "0.3.0"
+#define NGINX_MODULE_NRPC_PRERED_VERSION "0.9.0"
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
+
+
+u_char g_CN [] = "CN=";
 
 typedef struct
 {
@@ -52,7 +55,7 @@ static void *ngx_stream_nrpc_preread_create_srv_conf (ngx_conf_t *cf);
 static char *ngx_stream_nrpc_preread_merge_srv_conf (ngx_conf_t *cf, void *parent, void *child);
 
 static int ngx_GetWordLE (u_char *pBuffer, size_t offset);
-static u_char *ngx_FindInBuffer (u_char *pBuffer, u_char *pLast, char *pszFindStr);
+static const u_char *ngx_FindInBuffer (const u_char *pBuffer, const u_char *pLast, const u_char *pszFindStr);
 
 
 static ngx_command_t ngx_stream_nrpc_preread_commands[] =
@@ -116,18 +119,18 @@ static int ngx_GetWordLE (u_char *pBuffer, size_t offset)
     return *(pBuffer + offset) + *(pBuffer + offset + 1) * 256;
 }
 
-static u_char *ngx_FindInBuffer (u_char *pBuffer, u_char *pLast, char *pszFindStr)
+static const u_char *ngx_FindInBuffer (const u_char *pBuffer, const u_char *pLast, const u_char *pszFindStr)
 {
-    u_char *pFind = NULL;
-    u_char *pPos  = NULL;
-    u_char *p     = NULL;
+    const u_char *pFind = NULL;
+    const u_char *pPos  = NULL;
+    const u_char *p     = NULL;
 
     if ( (NULL == pBuffer) || (NULL == pLast) || (NULL == pszFindStr) )
         return NULL;
 
     while (pBuffer < pLast)
     {
-        pFind = ngx_strlchr (pBuffer, pLast, *pszFindStr);
+        pFind = (const u_char *) ngx_strlchr ((u_char *)pBuffer, (u_char *)pLast, (u_char)*pszFindStr);
 
         if (NULL == pFind)
             return NULL;
@@ -200,7 +203,7 @@ static ngx_int_t ngx_stream_nrpc_preread_handler (ngx_stream_session_t *s)
     if ( (NULL == pBuffer) || (NULL == pLast))
         return NGX_AGAIN;
 
-    DominoServerName.data = ngx_FindInBuffer (pBuffer, pLast, "CN=");
+    DominoServerName.data = (u_char *) ngx_FindInBuffer (pBuffer, pLast, g_CN);
 
     if (DominoServerName.data)
         DominoServerName.len = ngx_GetWordLE ((u_char *) (DominoServerName.data - 2), 0);
@@ -299,11 +302,11 @@ static ngx_int_t ngx_stream_nrpc_preread_server_name_variable (ngx_stream_sessio
 
     size_t ServerLen = 0;
 
-    char *pBegin = NULL;
-    char *pEnd   = NULL;
-    char *pFind  = NULL;
-    char *pSlash = NULL;
-    char *p      = NULL;
+    const char *pBegin = NULL;
+    const char *pEnd   = NULL;
+    const char *pFind  = NULL;
+    const char *pSlash = NULL;
+    char *p = NULL;
 
     c = s->connection;
 
@@ -415,10 +418,11 @@ static ngx_int_t ngx_stream_nrpc_preread_org_name_variable (ngx_stream_session_t
 
     size_t OrgLen = 0;
 
-    char *pBegin = NULL;
-    char *pEnd   = NULL;
-    char *pFind  = NULL;
-    char *pSlash = NULL;
+    const char *pBegin = NULL;
+    const char *pEnd   = NULL;
+    const char *pFind  = NULL;
+    const char *pSlash = NULL;
+
     char *p = NULL;
 
     c = s->connection;

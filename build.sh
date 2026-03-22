@@ -3,21 +3,42 @@
 # Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
-if [ "$1" = "alpine" ]; then
-  BASE_IMAGE=alpine
-elif [ "$1" = "ubi" ]; then
-  BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal
-fi
 
-if [ -z "$BASE_IMAGE" ]; then
-  BASE_IMAGE=alpine
-fi
 
-if [ -z "$NGINX_VER" ]; then
-  NGINX_VER=1.29.5
-fi
+# --------------------------------------------------------------------------
+# Defaults
+# --------------------------------------------------------------------------
 
-# --------------------
+BASE_IMAGE="alpine"
+NGINX_VER="1.29.6"
+
+for arg in "$@"; do
+    case "$arg" in
+
+        -alpine)
+            BASE_IMAGE="alpine"
+            ;;
+
+        -wolfi)
+            BASE_IMAGE="cgr.dev/chainguard/wolfi-base"
+            ;;
+
+        -ubi)
+            BASE_IMAGE="registry.access.redhat.com/ubi10/ubi-minimal"
+            ;;
+
+        -nginx=*)
+            NGINX_VER="${arg#-nginx=}"
+            ;;
+
+        *)
+            echo "Invalid parameter [$arg]"
+            exit 1
+            ;;
+
+    esac
+done
+
 
 print_delim()
 {
@@ -53,7 +74,7 @@ header "Building NGINX $NGINX_VER on $BASE_IMAGE ..."
 
 export BUILDKIT_PROGRESS=plain
 
-docker build --no-cache -t domino-nrpc-sni --build-arg BASE_IMAGE=$BASE_IMAGE --build-arg NGINX_VER=$NGINX_VER .
+docker build --no-cache -t domino-nrpc-proxy --build-arg BASE_IMAGE=$BASE_IMAGE --build-arg NGINX_VER=$NGINX_VER .
 
 echo
 print_runtime

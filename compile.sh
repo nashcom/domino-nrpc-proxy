@@ -3,6 +3,8 @@
 # Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
+set -e
+
 # For testing: If nginx and module are already present, don't start build
 if [ -e /nginx ] && [ -e /ngx_stream_nrpc_preread_module.so ]; then
   echo "NGINX and module already present - No compile required"
@@ -158,15 +160,27 @@ clean_linux_repo_cache()
 
 check_linux_update
 
-if [ -x /sbin/apk ]; then
-  # Alpine package names are different
-  install_packages tar gzip gcc g++ make curl pcre-dev zlib-dev openssl-dev zlib-devel pcre-devel
-else
-  install_packages tar gzip gcc make zlib-devel pcre-devel openssl-devel
-fi
+# Source it to get the variables
+. /etc/os-release
+
+case "$ID" in
+
+    wolfi)
+      install_packages gzip build-base curl pcre-dev zlib-dev openssl-dev
+      ;;
+
+    alpine)
+      install_packages gzip build-base curl pcre-dev zlib-dev openssl-dev
+      ;;
+
+    *)
+      install_packages tar gzip gcc make zlib-devel pcre2-devel openssl-devel
+      ;;
+esac
+
 
 if [ -z "$NGINX_VER" ]; then
-  NGINX_VER=1.29.5
+  NGINX_VER=1.29.6
 fi
 
 curl -L http://nginx.org/download/nginx-$NGINX_VER.tar.gz | tar xz
@@ -174,17 +188,13 @@ cd nginx-$NGINX_VER
 
 ./configure --with-stream --add-dynamic-module=.. --with-stream_ssl_preread_module --with-http_ssl_module --with-ipv6 --prefix=/tmp/nginx --sbin-path=/nginx --conf-path=/tmp/nginx/nginx.conf --error-log-path=stderr --pid-path=/tmp/nginx/nginx.pid
 
-# If NGINX is already build, just build module
-
-if [ -e /nginx ]; then
-  header "Building module only ..."
-  make modules
-
-else
-  header "Building NGINX & module. This takes some time  ..."
-  make
-  cp objs/nginx /
-fi
-
+header "Building module ..."
+make modules
 cp objs/ngx_stream_nrpc_preread_module.so /
+
+if [ ! -e /nginx ]; then
+    header "Building NGINX binary -- this takes some time ..."
+    make
+    cp objs/nginx /
+fi
 
