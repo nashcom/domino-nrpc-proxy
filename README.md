@@ -3,7 +3,7 @@
 This project provides a NRPC proxy stream module to dispatch NRPC traffic.
 It works similar to a TLS/SSL SNI stream module. The first package contains the server name and uses it to map the network connection to the right backend server.
 
-The project provides a container base image build based on Alpine, Chainguard Wolif or RedHat UBI minimal image.
+The project provides a container base image build based on Alpine, Chainguard Wolfi or RedHat UBI minimal image.
 It compiles the NGINX proxy including the module. This is important because NGINX version and the module must always be based on the same NGINX version.
 In addition this build allows to build NGINX in the way needed.
 
@@ -31,8 +31,8 @@ To run the image just use the following script.
 
 # HCL Domino NRPC container configuration
 
-The container uses a template based approach. By default `nginx_template.conf` is used.
-This template container environment variables which are replaced on startup via envsubst.
+The container uses a template-based approach. By default `nginx_template.conf` is used as the configuration template.
+Environment variables defined in the template are substituted at container startup via `envsubst` to generate the final `nginx.conf`.
 
 The container image provides configuration for Docker and Kubernetes and leverages the container name resolution.
 
