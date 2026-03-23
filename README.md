@@ -1,102 +1,190 @@
+
 # nginx-nrpc-module
 
-This project provides a NRPC proxy stream module to dispatch NRPC traffic.
-It works similar to a TLS/SSL SNI stream module. The first package contains the server name and uses it to map the network connection to the right backend server.
+## Overview
 
-The project provides a container base image build based on Alpine, Chainguard Wolfi or RedHat UBI minimal image.
-It compiles the NGINX proxy including the module. This is important because NGINX version and the module must always be based on the same NGINX version.
-In addition this build allows to build NGINX in the way needed.
+This project provides an **NGINX stream module for NRPC (Notes Remote Procedure Call)** traffic routing.
 
+It works similarly to **TLS/SSL SNI-based routing**, but instead of TLS metadata, it inspects the **first NRPC packet**, extracts the **Domino server name**, and dynamically routes the connection to the correct backend server.
 
-## How to build the image
+### Key Characteristics
 
-The build process is a multi stage build. The first build stage builds NGINX and the module.
-The second stage uses the minimal configured Redhat UBI image containing the required run-time components only.
+* NRPC-aware routing (no TLS required)
+* Transparent TCP proxying
+* No changes required on Domino servers
+* Ideal for containerized environments (Docker / Kubernetes)
+* Allows to use NRPC port 1352 for multiple Domino servers on the same IP address.
 
-To build the image just invoke
+## NRPC Flow (Preread Routing)
 
 ```
+ ┌──────────────┐
+ │   NRPC Client│
+ │ (Notes / App)│
+ └──────┬───────┘
+        │  NRPC (Port 1352)
+        │
+        ▼
+ ┌───────────────────────────────┐
+ │           NGINX               │
+ │   stream + nrpc_preread       │
+ │                               │
+ │  1. Read first NRPC packet    │
+ │  2. Extract server name       │
+ │     CN=mail01 / O=Acme        │
+ │                               │
+ │  Variables:                   │
+ │  - $nrpc_preread_server_name  │
+ │  - $nrpc_preread_org_name     │
+ └──────────────┬────────────────┘
+                │
+                │  Mapping logic
+                │
+                ▼
+        ┌───────────────────────┐
+        │   NGINX map{}         │
+        │                       │
+        │ mail01 →              │
+        │ mail01.acme.svc       │
+        │                       │
+        └──────────┬────────────┘
+                   │
+                   │ proxy_pass
+                   │
+                   ▼
+        ┌────────────────────────┐
+        │  Domino Backend Server │
+        │  (Resolved via DNS)    │
+        └────────────────────────┘
+```
+
+
+## Container Image
+
+The project provides a container base image built on:
+
+* Alpine Linux
+* Chainguard Wolfi
+* Red Hat UBI Minimal
+
+NGINX and the NRPC module are compiled together.
+The main reason is that NGINX modules must always match the exact NGINX version they are built with.
+
+
+## Build the Image
+
+The build process uses a **multi-stage Docker build**:
+
+1. Build NGINX + NRPC module
+2. Copy runtime into a minimal base image
+
+```bash
 ./build.sh
 ```
 
-## How to run the image
 
-First review and configure the `.env` container configuration.
-To run the image just use the following script.
+## Run the Container
 
-```
+1. Review and configure the `.env` file
+2. Start the container:
+
+```bash
 ./run.sh
 ```
 
 
-# HCL Domino NRPC container configuration
+# HCL Domino NRPC Container Configuration
 
-The container uses a template-based approach. By default `nginx_template.conf` is used as the configuration template.
-Environment variables defined in the template are substituted at container startup via `envsubst` to generate the final `nginx.conf`.
+The container uses a **template-based configuration approach**.
 
-The container image provides configuration for Docker and Kubernetes and leverages the container name resolution.
+* Template: `nginx_template.conf`
+* Variables are substituted at startup using `envsubst`
+* Final configuration: `nginx.conf`
 
+This works with:
 
-# Module configuration
-
-- **nrpc_preread on;**  
-  Enables the NGINX module
-  
-- **nrpc_preread_replacedots on;**  
-  Enables the replacement of dots to underscores.
-  This is helpful because they would be difficult to be replaced by NGINX mappings
-  
-
-# Variables provided by the module
-
-- **nrpc_preread_server_name**  
-  CN of the Domino server name requested (CN=)  
-
-- **nrpc_preread_org_name**  
-  Organization name (O=) of the server
-
-Both variables are used to map the requesting server name to the back-end server
-  
+* Docker DNS
+* Kubernetes service discovery
 
 
-## DNS Resolver
+# Module Configuration
 
-**NGINX_RESOLVER=**
+### Enable NRPC preread
 
-By default server is read from container's /etc/resolve.conf and configured thru the template.
-It can be overwritten by a custom name server IP.
+```nginx
+nrpc_preread on;
+```
 
+### Replace dots in server names
 
-## Domino target port (default 1352)
+```nginx
+nrpc_preread_replacedots on;
+```
 
-**DOMINO_PORT=1352**
-
-The standard port should only be modified in special cases, when servers use separate local ports.
-
-
-## Replace dots in CN with '-'.
-
-**NGINX_REPLACE_DOTS=on**
-
-Container names cannot have dots on Docker and Kubernetes.
-The option replaces dots to dashes for incoming server names.
-This allows to map the Domino CN to the container name/service. 
-Blanks are always replaced to underscores. 
+Enables the replacement of dots to underscores.
+This is helpful because they would be difficult to be replaced by NGINX mappings
 
 
-## Default organization name to assume if not present
+# Variables Provided by the Module
 
-**DOMINO_DEFAULT_ORG=default**
+| Variable                   | Description               |
+| -------------------------- | ------------------------- |
+| `nrpc_preread_server_name` | Domino server CN (CN=...) |
+| `nrpc_preread_org_name`    | Organization name (O=...) |
 
-If not organization is found this organzation is assumed for mapping.
+These variables are used to determine the backend server.
 
 
-# Mapping for server name if not internet address
+# DNS Resolver
 
-**NGINX_MAP_DEFAULT**
+```
+NGINX_RESOLVER=
+```
 
-If no server is found the specified server is set in the NGINX map.
-The setting allows to use NGINX defiend variables.
+* Defaults to `/etc/resolv.conf`
+* Can be overridden with a custom DNS server
+
+
+# Domino Target Port
+
+```
+DOMINO_PORT=1352
+```
+
+Only change if Domino uses a non-standard NRPC port.
+
+
+# Replace Dots in Server Names
+
+```
+NGINX_REPLACE_DOTS=on
+```
+
+* Converts `.` → `-`
+* Converts spaces → `_`
+
+Useful for:
+
+* Docker container names
+* Kubernetes services
+
+
+# Default Organization
+
+```
+DOMINO_DEFAULT_ORG=default
+```
+
+Used when no organization is present in the NRPC request.
+
+
+# Mapping Configuration
+
+## Default Mapping (Non-Internet Names)
+
+```
+NGINX_MAP_DEFAULT
+```
 
 Examples:
 
@@ -106,10 +194,11 @@ NGINX_MAP_DEFAULT=$nrpc_preread_server_name.$nrpc_preread_org_name.svc.cluster.l
 ```
 
 
-# Mapping for server name if internet address
+## Internet Address Mapping
 
-In case an internet address is passed by NGINX, this setting defines which DNS name is returned.
-
+```
+NGINX_MAP_INET
+```
 
 Example:
 
@@ -118,14 +207,11 @@ NGINX_MAP_INET=$nrpc_preread_server_name.$nrpc_preread_org_name.svc.cluster.loca
 ```
 
 
-## NGINX configuration 
+# NGINX Configuration Template
 
+The following configuration is included in the container image and can be overridden if needed.
 
-The following NGINX configuration template part of the container iamge and could be overwritten is an own configuration file.
-In normal cases the environment variable configuration should be the  sufficient. 
-
-
-```
+```nginx
 load_module /ngx_stream_nrpc_preread_module.so;
 
 worker_processes auto;
@@ -142,13 +228,11 @@ stream {
   resolver $NGINX_RESOLVER valid=60s;
 
   map $nrpc_preread_org_name $name_org {
-
     ""        $DOMINO_DEFAULT_ORG;
     default   $nrpc_preread_org_name;
   }
 
   map $nrpc_preread_server_name $name {
-
     ~.*\..*$  $NGINX_MAP_INET:$DOMINO_PORT;
     default   $NGINX_MAP_DEFAULT:$DOMINO_PORT;
   }
@@ -162,22 +246,30 @@ stream {
   }
 
 }
-
 ```
 
 
-## Log Levels
+# Logging
 
-Log levels are the standard NGINX log levels
+Standard NGINX log levels are supported:
 
-| Level  | Description |
-|--------|-------------|
-| debug  | Useful debugging information to help determine where the problem lies. |
-| info   | Informational messages that aren't necessary to read but may be good to know. |
-| notice | Something normal happened that is worth noting. |
-| warn   | Something unexpected happened, however is not a cause for concern. |
-| error  | Something was unsuccessful. |
-| crit   | There are problems that need to be critically addressed. |
-| alert  | Prompt action is required. |
-| emerg  | The system is in an unusable state and requires immediate attention. |
+| Level  | Description                    |
+| ------ | ------------------------------ |
+| debug  | Detailed debugging information |
+| info   | Informational messages         |
+| notice | Normal but notable events      |
+| warn   | Unexpected but non-critical    |
+| error  | Errors occurred                |
+| crit   | Critical conditions            |
+| alert  | Immediate action required      |
+| emerg  | System unusable                |
+
+---
+
+# Summary
+
+* NRPC-aware routing using NGINX stream module
+* Dynamic backend resolution based on Domino server names
+* Designed for container and Kubernetes environments
+* Lightweight, transparent and with additional security options thru NGINX
 
