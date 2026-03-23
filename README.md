@@ -1,5 +1,5 @@
 
-# nginx-nrpc-module
+# domino-nrpc-proxy
 
 ## Overview
 
