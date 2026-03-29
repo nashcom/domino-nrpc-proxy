@@ -61,6 +61,7 @@ export NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-}
 export NGINX_UPSTREAM=${NGINX_UPSTREAM:-}
 export NGINX_ACME_SERVER=${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
 export NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL:-}
+export NGINX_RESOLVER_IPV6=${NGINX_RESOLVER_IPV6:-ipv6=off}
 
 if [ -z "$NGINX_RESOLVER" ]; then
   export NGINX_RESOLVER=$(grep -i '^nameserver' /etc/resolv.conf | head -n1 | cut -d ' ' -f2)
