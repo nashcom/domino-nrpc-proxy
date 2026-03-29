@@ -1,0 +1,55 @@
+
+############################################################################
+# Copyright Nash!Com, Daniel Nashed 2024-2026 - APACHE 2.0 see LICENSE
+############################################################################
+# Angie HTTPS reverse proxy example with automatic ACME certificate
+# management via Let's Encrypt.
+#
+# Usage:
+#   1. Copy env.example to .env and fill in your values
+#   2. Ensure ports 80 and 443 are open on this machine
+#   3. docker compose up -d
+############################################################################
+
+services:
+
+  proxy:
+    image: ${CONTAINER_IMAGE:-domino-nrpc-proxy:angie}
+    container_name: nrpc-proxy-https
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - PROXY_MODE=https
+      - NGINX_PORT=443
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
+      - NGINX_UPSTREAM=http://backend:80
+      - NGINX_ACME_SERVER=${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
+      - NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL}
+      - NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
+    volumes:
+      - angie-acme:/acme
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - proxy-net
+    depends_on:
+      - backend
+
+  backend:
+    image: traefik/whoami
+    container_name: nrpc-proxy-backend
+    restart: unless-stopped
+    networks:
+      - proxy-net
+
+volumes:
+  angie-acme:
+    driver: local
+
+networks:
+  proxy-net:
+    driver: bridge

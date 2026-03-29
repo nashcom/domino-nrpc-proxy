@@ -54,6 +54,10 @@ export DOMINO_PORT=${DOMINO_PORT:-1352}
 export NGINX_CONNECTIONS=${NGINX_CONNECTIONS:-8000}
 export NGINX_RLIMIT_NOFILE=${NGINX_RLIMIT_NOFILE:-65536}
 export DOMINO_DEFAULT_ORG=${DOMINO_DEFAULT_ORG:-default}
+export NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-}
+export NGINX_UPSTREAM=${NGINX_UPSTREAM:-}
+export NGINX_ACME_SERVER=${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
+export NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL:-}
 
 if [ -z "$NGINX_RESOLVER" ]; then
   export NGINX_RESOLVER=$(grep -i '^nameserver' /etc/resolv.conf | head -n1 | cut -d ' ' -f2)
@@ -90,6 +94,7 @@ export first_label='$first_label'
 export host='$host'
 export remote_addr='$remote_addr'
 export proxy_add_x_forwarded_for='$proxy_add_x_forwarded_for'
+export request_uri='$request_uri'
 
 # --------------------------------------------------------------------------
 # Dump environment
