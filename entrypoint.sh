@@ -23,19 +23,21 @@ else
 fi
 
 BIN="/$RUNTIME"
-PROXY_MODE=${PROXY_MODE:-nrpc}
-CONF="/${RUNTIME}_${PROXY_MODE}_template.conf"
 WORKDIR="/tmp/$RUNTIME"
 
-# Allow a fully custom config to be mounted and referenced via NGINX_CONF
-if [ -n "$NGINX_CONF" ] && [ -f "$NGINX_CONF" ]; then
-  CONF="$NGINX_CONF"
-elif [ ! -f "$CONF" ]; then
-  echo
-  echo "Invalid PROXY_MODE [$PROXY_MODE] - no template found: $CONF"
-  echo "Valid modes: nrpc, stream, https"
-  echo
-  exit 1
+# Use mounted config if present, otherwise select template via PROXY_MODE
+if [ -f "/$RUNTIME.conf" ]; then
+  CONF="/$RUNTIME.conf"
+else
+  PROXY_MODE=${PROXY_MODE:-nrpc}
+  CONF="/${RUNTIME}_${PROXY_MODE}_template.conf"
+  if [ ! -f "$CONF" ]; then
+    echo
+    echo "Invalid PROXY_MODE [$PROXY_MODE] - no template found: $CONF"
+    echo "Valid modes: nrpc, stream, https"
+    echo
+    exit 1
+  fi
 fi
 
 # Create runtime directory
@@ -129,7 +131,7 @@ echo
 echo "$LINUX_PRETTY_NAME"
 echo ------------------------------------------------------------
 echo
-echo "$RUNTIME Server | Mode: $PROXY_MODE"
+echo "$RUNTIME Server | Mode: ${PROXY_MODE:-custom} | Config: $CONF"
 echo ------------------------------------------------------------
 "$BIN" -V
 echo ------------------------------------------------------------
