@@ -18,18 +18,19 @@ services:
     container_name: nrpc-proxy-https
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:8080"
+      - "443:8443"
     environment:
       - PROXY_MODE=https
-      - NGINX_PORT=443
+      - NGINX_HTTP_PORT=8080
+      - NGINX_PORT=8443
       - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
       - NGINX_UPSTREAM=${NGINX_UPSTREAM:-nrpc-proxy-backend:80}
       - NGINX_ACME_SERVER=${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
       - NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL}
       - NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
     volumes:
-      - angie-acme:/acme
+      - angie-acme:/tmp/angie/acme
     ulimits:
       nofile:
         soft: 65536

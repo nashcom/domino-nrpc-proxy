@@ -50,6 +50,7 @@ mkdir -p "$WORKDIR"
 export NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
 export NGINX_REPLACE_DOTS=${NGINX_REPLACE_DOTS:-off}
 export NGINX_PORT=${NGINX_PORT:-1352}
+export NGINX_HTTP_PORT=${NGINX_HTTP_PORT:-8080}
 export DOMINO_PORT=${DOMINO_PORT:-1352}
 export NGINX_CONNECTIONS=${NGINX_CONNECTIONS:-8000}
 export NGINX_RLIMIT_NOFILE=${NGINX_RLIMIT_NOFILE:-65536}
@@ -95,6 +96,9 @@ export host='$host'
 export remote_addr='$remote_addr'
 export proxy_add_x_forwarded_for='$proxy_add_x_forwarded_for'
 export request_uri='$request_uri'
+
+export acme_cert_default='$acme_cert_default'
+export acme_cert_key_default='$acme_cert_key_default'
 
 # --------------------------------------------------------------------------
 # Dump environment
