@@ -179,11 +179,11 @@ build_nginx()
     --with-http_ssl_module \
     --with-ipv6 \
  \
-    --prefix=/tmp/$TARGET \
+    --prefix=/var/$TARGET \
     --sbin-path=/$TARGET \
     --conf-path=/tmp/$TARGET/$TARGET.conf \
     --error-log-path=stderr \
-    --pid-path=/tmp/$TARGET/$TARGET.pid
+    --pid-path=/var/$TARGET/$TARGET.pid
 
   header "Building module"
   make modules
@@ -211,11 +211,11 @@ build_angie()
     --with-http_ssl_module \
     --with-http_acme_module \
  \
-    --prefix=/tmp/$TARGET \
+    --prefix=/var/$TARGET \
     --sbin-path=/$TARGET \
     --conf-path=/tmp/$TARGET/$TARGET.conf \
     --error-log-path=stderr \
-    --pid-path=/tmp/$TARGET/$TARGET.pid
+    --pid-path=/var/$TARGET/$TARGET.pid
 
   header "Building module"
   make modules

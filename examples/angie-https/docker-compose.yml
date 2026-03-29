@@ -30,7 +30,9 @@ services:
       - NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL}
       - NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
     volumes:
-      - angie-acme:/tmp/angie/acme
+      # For production replace with a host path to persist ACME account keys and certificates
+      # - /local/path/acme:/var/angie/acme
+      - angie-acme:/var/angie/acme
     ulimits:
       nofile:
         soft: 65536

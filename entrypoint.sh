@@ -23,7 +23,8 @@ else
 fi
 
 BIN="/$RUNTIME"
-WORKDIR="/tmp/$RUNTIME"
+WORKDIR="/var/$RUNTIME"
+TMPDIR="/tmp/$RUNTIME"
 
 # Use mounted config if present, otherwise select template via PROXY_MODE
 if [ -f "/$RUNTIME.conf" ]; then
@@ -40,8 +41,9 @@ else
   fi
 fi
 
-# Create runtime directory
+# Create runtime directories
 mkdir -p "$WORKDIR"
+mkdir -p "$TMPDIR"
 
 # --------------------------------------------------------------------------
 # Defaults (external interface stays NGINX_*)
@@ -110,7 +112,7 @@ set > "$WORKDIR/env.log"
 # Generate runtime configuration
 # --------------------------------------------------------------------------
 
-envsubst < "$CONF" > "$WORKDIR/$RUNTIME.conf"
+envsubst < "$CONF" > "$TMPDIR/$RUNTIME.conf"
 
 # --------------------------------------------------------------------------
 # Debug output
@@ -127,7 +129,7 @@ if [ "$NGINX_LOG_LEVEL" = "debug" ]; then
   echo
   echo Configuration
   echo ------------------------------------------------------------
-  cat -n "$WORKDIR/$RUNTIME.conf"
+  cat -n "$TMPDIR/$RUNTIME.conf"
   echo ------------------------------------------------------------
   echo
 fi
@@ -150,4 +152,4 @@ echo
 # Start runtime
 # --------------------------------------------------------------------------
 
-exec "$BIN" -e stderr -c "$WORKDIR/$RUNTIME.conf" -g 'daemon off;'
+exec "$BIN" -e stderr -c "$TMPDIR/$RUNTIME.conf" -g 'daemon off;'

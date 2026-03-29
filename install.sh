@@ -197,6 +197,10 @@ fi
 
 useradd nginx -U
 
+mkdir -p /var/nginx /var/angie
+chown nginx:nginx /var/nginx /var/angie
+chmod 750 /var/nginx /var/angie
+
 chown root:nginx /entrypoint.sh
 chown root:nginx "/$TARGET"
 chown root:nginx /ngx_stream_nrpc_preread_module.so
