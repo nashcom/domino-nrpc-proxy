@@ -1,7 +1,7 @@
 /*
 ###########################################################################
 # NRPC Stream pre-read NGINX Module                                       #
-# Version 0.9.0 22.03.2026                                                #
+# Version 0.9.2 29.03.2026                                                #
 # (C) Copyright Daniel Nashed/NashCom 2023-2026                           #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -18,7 +18,7 @@
 ###########################################################################
 */
 
-#define NGINX_MODULE_NRPC_PRERED_VERSION "0.9.0"
+#include "nrpc_version.h"
 
 #include <ngx_config.h>
 #include <ngx_core.h>
@@ -612,7 +612,7 @@ static ngx_int_t ngx_stream_nrpc_preread_init_module (ngx_cycle_t *cycle)
     if (NULL == cycle) 
         return NGX_ERROR;
 
-    ngx_log_error (NGX_LOG_NOTICE, cycle->log, 0, "HCL Domino NRPC Stream PreRead Module - Version %s loaded", NGINX_MODULE_NRPC_PRERED_VERSION);
+    ngx_log_error (NGX_LOG_NOTICE, cycle->log, 0, "HCL Domino NRPC Stream PreRead Module - Version %s loaded", NRPC_MODULE_VERSION);
 
     return NGX_OK;
 }

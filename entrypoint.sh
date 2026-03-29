@@ -1,56 +1,79 @@
 #!/bin/sh
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023-2025 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
-# This script is the main entry point for the NGINX container.
-# The entry point is invoked by the container run-time to start NGINX.
+# Main entry point for runtime (nginx / angie)
+
+set -e
 
 # Set more paranoid umask to ensure files can be only read by user
 umask 0077
 
-# Create log directory with owner nginx
-mkdir -p /tmp/nginx
-chown nginx:nginx /tmp/nginx
-
-if [ -z "$NGINX_LOG_LEVEL" ]; then
-  export NGINX_LOG_LEVEL=notice
+if [ -x /nginx ]; then
+  export RUNTIME=nginx
+elif [ -x /angie ]; then
+  export RUNTIME=angie
+else
+  echo
+  echo "Invalid runtime! Must be NGINX or Angie"
+  echo
+  exit 1
 fi
 
-if [ -z "$NGINX_REPLACE_DOTS" ]; then
-  export NGINX_REPLACE_DOTS=off
+BIN="/$RUNTIME"
+PROXY_MODE=${PROXY_MODE:-nrpc}
+CONF="/${RUNTIME}_${PROXY_MODE}_template.conf"
+WORKDIR="/tmp/$RUNTIME"
+
+# Allow a fully custom config to be mounted and referenced via NGINX_CONF
+if [ -n "$NGINX_CONF" ] && [ -f "$NGINX_CONF" ]; then
+  CONF="$NGINX_CONF"
+elif [ ! -f "$CONF" ]; then
+  echo
+  echo "Invalid PROXY_MODE [$PROXY_MODE] - no template found: $CONF"
+  echo "Valid modes: nrpc, stream, https"
+  echo
+  exit 1
 fi
+
+# Create runtime directory
+mkdir -p "$WORKDIR"
+
+# --------------------------------------------------------------------------
+# Defaults (external interface stays NGINX_*)
+# --------------------------------------------------------------------------
+
+export NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
+export NGINX_REPLACE_DOTS=${NGINX_REPLACE_DOTS:-off}
+export NGINX_PORT=${NGINX_PORT:-1352}
+export DOMINO_PORT=${DOMINO_PORT:-1352}
+export NGINX_CONNECTIONS=${NGINX_CONNECTIONS:-8000}
+export NGINX_RLIMIT_NOFILE=${NGINX_RLIMIT_NOFILE:-65536}
+export DOMINO_DEFAULT_ORG=${DOMINO_DEFAULT_ORG:-default}
 
 if [ -z "$NGINX_RESOLVER" ]; then
-  export NGINX_RESOLVER=$(cat /etc/resolv.conf |grep -i '^nameserver'|head -n1|cut -d ' ' -f2)
-fi
-
-if [ -z "$NGINX_PORT" ]; then
-  export NGINX_PORT=1352
-fi
-
-if [ -z "$DOMINO_PORT" ]; then
-  export DOMINO_PORT=1352
-fi
-
-if [ -z "$NGINX_CONNECTIONS" ]; then
-  export NGINX_CONNECTIONS=8000
-fi
-
-if [ -z "$DOMINO_DEFAULT_ORG" ]; then
-  export DOMINO_DEFAULT_ORG=default
+  export NGINX_RESOLVER=$(grep -i '^nameserver' /etc/resolv.conf | head -n1 | cut -d ' ' -f2)
+else
+  export NGINX_RESOLVER
 fi
 
 if [ -z "$NGINX_MAP_DEFAULT" ]; then
-  export NGINX_MAP_DEFAULT='$nrpc_preread_server_name' 
+  export NGINX_MAP_DEFAULT='$nrpc_preread_server_name'
+else
+  export NGINX_MAP_DEFAULT
 fi
 
 if [ -z "$NGINX_MAP_INET" ]; then
   export NGINX_MAP_INET='$nrpc_preread_server_name'
+else
+  export NGINX_MAP_INET
 fi
 
-# Export variables, which need to stay untranslated
+# --------------------------------------------------------------------------
+# Variables that must remain literal (not substituted)
+# --------------------------------------------------------------------------
 
 export name='$name'
 export nrpc_preread_domino_server='$nrpc_preread_domino_server'
@@ -62,40 +85,58 @@ export ssl_preread_server_name='$ssl_preread_server_name'
 export upstream_group='$upstream_group'
 export first_label='$first_label'
 
+export host='$host'
+export remote_addr='$remote_addr'
+export proxy_add_x_forwarded_for='$proxy_add_x_forwarded_for'
 
+# --------------------------------------------------------------------------
 # Dump environment
-set > /tmp/nginx/env.log
+# --------------------------------------------------------------------------
 
-# Substistute variables and create configuration
-envsubst < /nginx.conf > /tmp/nginx/nginx.conf
+set > "$WORKDIR/env.log"
 
-LINUX_PRETTY_NAME=$(cat /etc/os-release | grep "PRETTY_NAME="| cut -d= -f2 | xargs)
+# --------------------------------------------------------------------------
+# Generate runtime configuration
+# --------------------------------------------------------------------------
+
+envsubst < "$CONF" > "$WORKDIR/$RUNTIME.conf"
+
+# --------------------------------------------------------------------------
+# Debug output
+# --------------------------------------------------------------------------
+
+LINUX_PRETTY_NAME=$(grep PRETTY_NAME= /etc/os-release | cut -d= -f2 | xargs)
 
 if [ "$NGINX_LOG_LEVEL" = "debug" ]; then
   echo
   echo Environment
   echo ------------------------------------------------------------
-  set 
+  set
   echo ------------------------------------------------------------
   echo
-  echo Configuration 
+  echo Configuration
   echo ------------------------------------------------------------
-  cat -n /tmp/nginx/nginx.conf
+  cat -n "$WORKDIR/$RUNTIME.conf"
   echo ------------------------------------------------------------
   echo
 fi
 
+# --------------------------------------------------------------------------
+# Startup information
+# --------------------------------------------------------------------------
+
 echo
-echo $LINUX_PRETTY_NAME
+echo "$LINUX_PRETTY_NAME"
 echo ------------------------------------------------------------
 echo
-echo NGINX Server 
+echo "$RUNTIME Server | Mode: $PROXY_MODE"
 echo ------------------------------------------------------------
-/nginx -V
+"$BIN" -V
 echo ------------------------------------------------------------
 echo
 
-/nginx -e stderr -c /tmp/nginx/nginx.conf -g 'daemon off;'
+# --------------------------------------------------------------------------
+# Start runtime
+# --------------------------------------------------------------------------
 
-exit 0
-
+exec "$BIN" -e stderr -c "$WORKDIR/$RUNTIME.conf" -g 'daemon off;'
