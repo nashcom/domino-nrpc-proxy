@@ -24,7 +24,7 @@ services:
       - PROXY_MODE=https
       - NGINX_PORT=443
       - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
-      - NGINX_UPSTREAM=http://backend:80
+      - NGINX_UPSTREAM=${NGINX_UPSTREAM:-nrpc-proxy-backend:80}
       - NGINX_ACME_SERVER=${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
       - NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL}
       - NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
@@ -37,9 +37,9 @@ services:
     networks:
       - proxy-net
     depends_on:
-      - backend
+      - nrpc-proxy-backend
 
-  backend:
+  nrpc-proxy-backend:
     image: traefik/whoami
     container_name: nrpc-proxy-backend
     restart: unless-stopped
