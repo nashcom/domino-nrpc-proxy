@@ -197,9 +197,9 @@ fi
 
 useradd nginx -U
 
-mkdir -p /var/nginx /var/angie
-chown nginx:nginx /var/nginx /var/angie
-chmod 750 /var/nginx /var/angie
+mkdir -p /var/nginx /var/angie /var/angie/acme_client
+chown nginx:nginx /var/nginx /var/angie /var/angie/acme_client
+chmod 750 /var/nginx /var/angie /var/angie/acme_client
 
 chown root:nginx /entrypoint.sh
 chown root:nginx "/$TARGET"
