@@ -20,6 +20,7 @@ services:
     ports:
       - "80:8080"
       - "443:8443"
+      - "9100:9100"
     environment:
       - PROXY_MODE=https
       - NGINX_HTTP_PORT=8080
@@ -29,6 +30,7 @@ services:
       - NGINX_ACME_SERVER=${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
       - NGINX_ACME_EMAIL=${NGINX_ACME_EMAIL}
       - NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
+      - NGINX_METRICS_PORT=9100
     volumes:
       # For production replace with a host path to persist ACME account keys and certificates
       # - /local/path/acme_client:/var/angie/acme_client
