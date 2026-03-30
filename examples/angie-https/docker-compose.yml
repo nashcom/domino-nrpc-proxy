@@ -1,6 +1,6 @@
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2024-2026 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2026 - APACHE 2.0 see LICENSE
 ############################################################################
 # Angie HTTPS reverse proxy example with automatic ACME certificate
 # management via Let's Encrypt.
@@ -32,6 +32,8 @@ services:
       - NGINX_LOG_LEVEL=${NGINX_LOG_LEVEL:-notice}
       - NGINX_METRICS_PORT=9100
     volumes:
+      # Uncomment to override the built-in template with the local angie.conf
+      # - ./angie.conf:/angie.conf
       # For production replace with a host path to persist ACME account keys and certificates
       # - /local/path/acme_client:/var/angie/acme_client
       - angie-acme:/var/angie/acme_client
