@@ -269,6 +269,13 @@ stream {
 }
 ```
 
+# Kubernetes Configuration Example
+
+To use the NRPC Proxy on K8s a DaemonSet is the best option.
+It runs on each K8s node and dispatches traffic based on the CN of the Domino server.
+The [K8s DaemonSet example](k8s-nrpc-daemonset.yml) provides an end to end K8s configuration for dispatching NRPC in the **domino** namespace.
+To configure the DaemonSet the example IP address 1.2.3.4 needs to be adjusted.
+
 
 # Security Considerations
 
