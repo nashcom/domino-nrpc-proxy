@@ -197,15 +197,20 @@ fi
 
 useradd nginx -U
 
+mkdir -p /var/nginx /var/angie /var/angie/acme_client
+chown nginx:nginx /var/nginx /var/angie /var/angie/acme_client
+chmod 750 /var/nginx /var/angie /var/angie/acme_client
+
 chown root:nginx /entrypoint.sh
-chown root:nginx /nginx
+chown root:nginx "/$TARGET"
 chown root:nginx /ngx_stream_nrpc_preread_module.so
-chown root:nginx /nginx.conf
 
 chmod 550 /entrypoint.sh
-chmod 550 /nginx
+chmod 550 "/$TARGET"
 chmod 550 /ngx_stream_nrpc_preread_module.so
-chmod 440 /nginx.conf
+
+chown root:nginx /*_template.conf
+chmod 440 /*_template.conf
 
 check_linux_update
 clean_linux_repo_cache

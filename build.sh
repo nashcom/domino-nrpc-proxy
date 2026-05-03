@@ -3,14 +3,11 @@
 # Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
-
-
-# --------------------------------------------------------------------------
 # Defaults
-# --------------------------------------------------------------------------
-
 BASE_IMAGE="alpine"
-NGINX_VER="1.29.6"
+TARGET=nginx
+
+. ./current_version.txt
 
 for arg in "$@"; do
     case "$arg" in
@@ -31,6 +28,15 @@ for arg in "$@"; do
             NGINX_VER="${arg#-nginx=}"
             ;;
 
+        -angie)
+            TARGET=angie
+            ;;
+
+        -angie=*)
+            TARGET=angie
+            ANGIE_VER="${arg#-angie=}"
+            ;;
+
         *)
             echo "Invalid parameter [$arg]"
             exit 1
@@ -39,6 +45,21 @@ for arg in "$@"; do
     esac
 done
 
+case "$TARGET" in
+  nginx)
+    TARGET_NAME=NGINX
+    VERSION=$NGINX_VER
+    IMAGE_NAME="Domino NRPC Proxy"
+    ;;
+  angie)
+    TARGET_NAME=Angie
+    VERSION=$ANGIE_VER
+    IMAGE_NAME="Domino NRPC Proxy (Angie)"
+    ;;
+esac
+
+BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILDTIME=$(date -u +"%d.%m.%Y %H:%M:%S")
 
 print_delim()
 {
@@ -70,11 +91,25 @@ print_runtime()
   echo
 }
 
-header "Building NGINX $NGINX_VER on $BASE_IMAGE ..."
+header "Building $TARGET_NAME $VERSION on $BASE_IMAGE ..."
 
 export BUILDKIT_PROGRESS=plain
 
-docker build --no-cache -t domino-nrpc-proxy --build-arg BASE_IMAGE=$BASE_IMAGE --build-arg NGINX_VER=$NGINX_VER .
+case "$TARGET" in
+  nginx) IMAGE_TAG=latest ;;
+  angie) IMAGE_TAG=angie ;;
+esac
+
+docker build --no-cache -t domino-nrpc-proxy:$IMAGE_TAG \
+  --build-arg BASE_IMAGE=$BASE_IMAGE \
+  --build-arg TARGET=$TARGET \
+  --build-arg VERSION=$VERSION \
+  --build-arg IMAGE_NAME="$IMAGE_NAME" \
+  --build-arg NRPC_PROXY_VER=$NRPC_PROXY_VER \
+  --build-arg BUILD_DATE=$BUILD_DATE \
+  --build-arg BUILDTIME="$BUILDTIME" \
+  --label ${TARGET}-version=$VERSION \
+  .
 
 echo
 print_runtime

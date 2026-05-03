@@ -81,15 +81,33 @@ See **[Security Considerations](#security-considerations)** below for details.
         └────────────────────────┘
 ```
 
+## Runtimes and Proxy Modes
+
+The project supports two proxy runtimes:
+
+| Runtime | Image Tag | Description |
+|---------|-----------|-------------|
+| NGINX   | `latest`  | Standard build, NRPC and stream proxy |
+| Angie   | `angie`   | Adds HTTPS with built-in ACME certificate management |
+
+Three proxy modes are available via the `PROXY_MODE` environment variable:
+
+| Mode | Description |
+|------|-------------|
+| `nrpc` (default) | HCL Domino NRPC routing |
+| `stream` | Generic TCP stream proxy |
+| `https` | HTTPS reverse proxy (Angie with automatic certificates) |
+
+See [Angie Integration](angie.md) for details on the Angie runtime and [Proxy Modes](proxy-modes.md) for full proxy mode documentation.
+
 ## Container Image
 
 The project provides a container base image built on:
 
 * Alpine Linux
 * Chainguard Wolfi
-* Red Hat UBI Minimal
 
-NGINX and the NRPC module are compiled together.
+NGINX or Angie and the NRPC module are compiled together.
 The main reason is that NGINX modules must always match the exact NGINX version they are built with.
 
 

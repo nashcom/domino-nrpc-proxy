@@ -8,8 +8,9 @@ on:
       - 'v*'
     paths:
       - 'dockerfile'
-      - 'nginx_template.conf'
+      - '*_template.conf'
       - 'ngx_stream_nrpc_preread_module.c'
+      - 'compile.sh'
       - 'entrypoint.sh'
       - '.github/workflows/build.yml'
 
@@ -26,7 +27,6 @@ on:
 
 env:
   DEFAULT_BASE_IMAGE: cgr.dev/chainguard/wolfi-base
-  NGINX_VER: 1.29.5
 
 jobs:
   build:
@@ -39,6 +39,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Read versions
+        run: |
+          . ./current_version.txt
+          echo "NGINX_VER=$NGINX_VER" >> $GITHUB_ENV
+          echo "ANGIE_VER=$ANGIE_VER" >> $GITHUB_ENV
+          echo "NRPC_PROXY_VER=$NRPC_PROXY_VER" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_ENV
+          echo "BUILDTIME=$(date -u +"%d.%m.%Y %H:%M:%S")" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -61,7 +70,9 @@ jobs:
             org.opencontainers.image.vendor=NashCom
             org.opencontainers.image.authors=Daniel Nashed <nsh@nashcom.de>
             org.opencontainers.image.licenses=Apache-2.0
-            org.opencontainers.image.url=https://github.com/nashcom/nginx-nrpc-module
+            org.opencontainers.image.url=https://github.com/nashcom/domino-nrpc-proxy
+            nginx-version=${{ env.NGINX_VER }}
+            angie-version=${{ env.ANGIE_VER }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -80,7 +91,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BASE_IMAGE=${{ github.event.inputs.base_image || env.DEFAULT_BASE_IMAGE }}
-            NGINX_VER=${{ env.NGINX_VER }}
+            TARGET=nginx
+            VERSION=${{ env.NGINX_VER }}
+            IMAGE_NAME=Domino NRPC Proxy
+            NRPC_PROXY_VER=${{ env.NRPC_PROXY_VER }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            BUILDTIME=${{ env.BUILDTIME }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
