@@ -2,9 +2,7 @@ ARG BASE_IMAGE=alpine
 ARG TARGET=nginx
 ARG VERSION
 
-# =========================
 # Build stage
-# =========================
 FROM $BASE_IMAGE AS build
 
 ARG TARGET
@@ -21,16 +19,14 @@ COPY compile.sh /
 COPY config /
 COPY ngx_stream_nrpc_preread_module.c /
 COPY nrpc_version.h /
-COPY *_template.conf /
+COPY cfg /cfg
 COPY entrypoint.sh /
 
 # Build binary + module
 RUN /compile.sh
 
 
-# =========================
 # Runtime stage
-# =========================
 FROM $BASE_IMAGE
 
 ARG TARGET
@@ -47,7 +43,7 @@ ENV TARGET=$TARGET
 COPY --from=build /$TARGET /
 COPY --from=build /ngx_stream_nrpc_preread_module.so /
 COPY --from=build /entrypoint.sh /
-COPY --from=build /*_template.conf /
+COPY --from=build /cfg /cfg
 
 # Install + permissions
 COPY install.sh /

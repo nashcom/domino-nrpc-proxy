@@ -183,6 +183,14 @@ clean_linux_repo_cache()
   fi
 }
 
+
+create_dir()
+{
+  mkdir -p "$1"
+  chown nginx:nginx "$1"
+  chmod 750 "$1"
+}
+
 # --- End Helper functions ---
 
 
@@ -190,16 +198,18 @@ check_linux_update
 
 if [ -x /sbin/apk ]; then
   # Alpine package names are different
-  install_packages gettext findutils shadow pcre
+  install_packages gettext findutils shadow pcre bash openssl
 else
-  install_packages hostname gettext bind-utils findutils shadow-utils
+  install_packages hostname gettext bind-utils findutils shadow-utils openssl
 fi
 
 useradd nginx -U
 
-mkdir -p /var/nginx /var/angie /var/angie/acme_client
-chown nginx:nginx /var/nginx /var/angie /var/angie/acme_client
-chmod 750 /var/nginx /var/angie /var/angie/acme_client
+create_dir /var/nginx
+create_dir /tmp/nginx
+create_dir /tmp/angie
+create_dir /var/angie
+create_dir /var/angie/acme_client
 
 chown root:nginx /entrypoint.sh
 chown root:nginx "/$TARGET"
