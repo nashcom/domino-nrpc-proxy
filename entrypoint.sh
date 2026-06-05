@@ -607,6 +607,42 @@ cert_update_check()
   return 0
 }
 
+wait_for_tls_config()
+{
+  while true
+  do
+
+    # Private key is mandatory
+    if [ ! -f "$NGINX_SSL_KEY" ]; then
+      log_space "Waiting for private key: $NGINX_SSL_KEY"
+      sleep "$INTERVAL_SECONDS"
+      continue
+    fi
+
+    # Existing cert mounted?
+    if [ -f "$NGINX_SSL_CERT" ]; then
+      log_debug "Certificate file exists: $NGINX_SSL_CERT"
+      return 0
+    fi
+
+    # Try CertMgr bootstrap if configured
+    if [ -n "$CERTMGR_HOST" ] && [ -n "$HOSTNAME" ]; then
+
+      log_space "Trying to retrieve certificate $NGINX_SSL_CERT from $CERTMGR_HOST"
+
+      check_cert_download "$NGINX_SSL_KEY" "$NGINX_SSL_CERT" "$CERTMGR_HOST" "$HOSTNAME"
+
+      if [ -f "$NGINX_SSL_CERT" ]; then
+        return 0
+      fi
+    fi
+
+    log_space "Waiting for certificate [$NGINX_SSL_CERT]"
+    sleep "$INTERVAL_SECONDS"
+
+  done
+}
+
 
 cleanup_releases()
 {
@@ -831,6 +867,12 @@ fi
 mkdir -p "$NGINX_CFG_BASE_DIR"
 
 register_variables
+
+sleep "${STARTUP_DELAY:-0}"
+
+if [ -n "$CERTMGR_HOST" ]; then
+  wait_for_tls_config
+fi
 
 EPOCH=$(date +%s)
 nginx_start || true
