@@ -144,8 +144,11 @@ copy_file()
     return 0
   fi
 
-  if [ ! -w "$2" ]; then
-    echo "Warning: Cannot copy file $1 -> $2"
+  local TARGET_DIR
+  TARGET_DIR=$(dirname "$2")
+
+  if [ ! -d "$TARGET_DIR" ] || [ ! -w "$TARGET_DIR" ]; then
+    echo "Warning: Cannot write to directory $TARGET_DIR when copying file ($1 -> $2)"
     return 0
   fi
 
@@ -169,8 +172,11 @@ move_file()
     return 0
   fi
 
-  if [ ! -w "$2" ]; then
-    echo "Warning: Cannot move file ($1 -> $2)"
+  local TARGET_DIR
+  TARGET_DIR=$(dirname "$2")
+
+  if [ ! -d "$TARGET_DIR" ] || [ ! -w "$TARGET_DIR" ]; then
+    echo "Warning: Cannot write to directory $TARGET_DIR when moving file: ($1 -> $2)"
     return 0
   fi
 
