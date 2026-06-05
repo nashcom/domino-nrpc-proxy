@@ -349,6 +349,7 @@ show_cert()
   echo
 }
 
+
 copy_if_newer()
 {
     local SRC="$1"
@@ -374,6 +375,7 @@ log_debug()
 
 copy_runtime_secrets()
 {
+
   local REL_PATH=
   local DST_FILE=
 
@@ -399,6 +401,7 @@ copy_runtime_secrets()
 
 cert_update()
 {
+
   local NEW_PEM="$1"
   local CURRENT_PEM="$2"
   local CURRENT_KEY="$3"
@@ -938,6 +941,9 @@ mkdir -p "$NGINX_CFG_BASE_DIR"
 register_variables
 
 sleep "${STARTUP_DELAY:-0}"
+
+# Copy TLS certs and keys first
+copy_runtime_secrets "$NGINX_CERT_CFG_DIR" "$NGINX_CERT_DIR"
 
 if [ -n "$CERTMGR_HOST" ]; then
   wait_for_tls_config
