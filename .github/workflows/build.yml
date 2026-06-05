@@ -2,13 +2,11 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
     paths:
       - 'dockerfile'
-      - '*_template.conf'
+      - 'cfg/**'
       - 'ngx_stream_nrpc_preread_module.c'
       - 'compile.sh'
       - 'entrypoint.sh'

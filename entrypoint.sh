@@ -217,6 +217,10 @@ update_cfg()
 
   log_debug "ENV_VARS: $ENV_VARS"
 
+  header "Environment"
+  env
+  echo
+
   mkdir -p "$CONFIG_RELEASE_DIR"
 
   if [ -d "$NGINX_CFG_TEMPLATE_DIR" ]; then
@@ -384,6 +388,15 @@ cert_update()
 
   # Get public key hash of updated cert and current key
   local PUB_KEY_HASH=$(openssl x509 -in "$NEW_PEM" -noout -pubkey | openssl sha1 | cut -d ' ' -f 2)
+
+  # Check if the private key has a password file
+  local PASS_FILE="${CURRENT_KEY%.*}.pass"
+  local PKEY_OPTIONS=()
+
+  if [ -f "$PASS_FILE" ]; then
+    PKEY_OPTIONS=(-passin "file:$PASS_FILE")
+  fi
+
   local PUB_PKEY_HASH=$(openssl pkey -in "$CURRENT_KEY" -pubout | openssl sha1 | cut -d ' ' -f 2)
 
   # Both keys must be the same when matching certificate for existing key
@@ -819,8 +832,6 @@ register_variables()
 
 log_debug "--- entrypoint.sh ---"
 
-set -e
-
 # Set more paranoid umask to ensure files can be only read by user
 umask 0077
 
@@ -862,7 +873,6 @@ else
     exit 1
   fi
 fi
-
 
 mkdir -p "$NGINX_CFG_BASE_DIR"
 
