@@ -403,7 +403,7 @@ cert_update()
     PKEY_OPTIONS=(-passin "file:$PASS_FILE")
   fi
 
-  local PUB_PKEY_HASH=$(openssl pkey -in "$CURRENT_KEY" -pubout | openssl sha1 | cut -d ' ' -f 2)
+  local PUB_PKEY_HASH=$(openssl pkey -in "$CURRENT_KEY" -pubout "${PKEY_OPTIONS[@]}" | openssl sha1 | cut -d ' ' -f 2)
 
   # Both keys must be the same when matching certificate for existing key
   if [ "$PUB_KEY_HASH" = "$PUB_PKEY_HASH" ]; then
@@ -807,15 +807,17 @@ register_variables()
 
   : > "$NGINX_ENV_VAR_FILE"
 
+  register_var CERTMGR_HOST "$CERTMGR_HOST"
+  register_var DOMINO_PORT "${DOMINO_PORT:-1352}"
+  register_var DOMINO_DEFAULT_ORG "${DOMINO_DEFAULT_ORG:-default}"
+
   register_var NGINX_LOG_LEVEL "${NGINX_LOG_LEVEL:-notice}"
   register_var NGINX_ACCESS_LOG "${NGINX_ACCESS_LOG:-off}"
   register_var NGINX_REPLACE_DOTS "${NGINX_REPLACE_DOTS:-off}"
   register_var NGINX_PORT "${NGINX_PORT:-1352}"
   register_var NGINX_HTTP_PORT "${NGINX_HTTP_PORT:-8080}"
-  register_var DOMINO_PORT "${DOMINO_PORT:-1352}"
   register_var NGINX_CONNECTIONS "${NGINX_CONNECTIONS:-8000}"
   register_var NGINX_RLIMIT_NOFILE "${NGINX_RLIMIT_NOFILE:-65536}"
-  register_var DOMINO_DEFAULT_ORG "${DOMINO_DEFAULT_ORG:-default}"
   register_var NGINX_SERVER_NAME "${NGINX_SERVER_NAME:-_}"
   register_var NGINX_UPSTREAM "${NGINX_UPSTREAM:-127.0.0.1}"
   register_var NGINX_ACME_SERVER "${NGINX_ACME_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}"
