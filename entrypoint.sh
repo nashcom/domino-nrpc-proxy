@@ -746,6 +746,10 @@ register_variables()
     NGINX_SSL_KEY="$NGINX_CERT_DIR/tls.key"
   fi
 
+  if [ -z "$NGINX_SSL_PASSWORD_FILE" ]; then
+    NGINX_SSL_PASSWORD_FILE="$NGINX_CERT_DIR/tls.pass"
+  fi
+
   : > "$NGINX_ENV_VAR_FILE"
 
   register_var NGINX_LOG_LEVEL "${NGINX_LOG_LEVEL:-notice}"
@@ -764,6 +768,7 @@ register_variables()
   register_var NGINX_METRICS_PORT "${NGINX_METRICS_PORT:-9100}"
   register_var NGINX_SSL_CERT "$NGINX_SSL_CERT"
   register_var NGINX_SSL_KEY "$NGINX_SSL_KEY"
+  register_var NGINX_SSL_PASSWORD_FILE "$NGINX_SSL_PASSWORD_FILE"
   register_var NGINX_RESOLVER "${NGINX_RESOLVER:-127.0.0.1}"
   register_var NGINX_RESOLVER_IPV6 "${NGINX_RESOLVER_IPV6:-ipv6=off}"
   register_var NGINX_MAP_DEFAULT "$NGINX_MAP_DEFAULT"

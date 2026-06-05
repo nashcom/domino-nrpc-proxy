@@ -17,41 +17,42 @@
 
 Most variables have defaults and are registered for `envsubst` into nginx config templates.
 
-| Variable               | Default                             | Description                                                                        |
-|------------------------|-------------------------------------|------------------------------------------------------------------------------------|
-| `METRICS_FILE`         | `/tmp/nginx-metrics.prom`           | Path of the Prometheus metrics output file                                         |
-| `INTERVAL_SECONDS`     | `10`                                | Main poll loop interval in seconds                                                 |
-| `CERT_CHECK_INTERVAL`  | `30`                                | Minimum seconds between CertMgr remote checks                                      |
-| `CONFIG_KEEP_RELEASES` | `3`                                 | Number of old config release directories to retain                                 |
-| `PROXY_MODE`           | `nrpc`                              | Template set to load when no mounted config is present (`nrpc`, `stream`, `https`) |
-| `CERTMGR_HOST`         |                                     | Hostname of the Domino CertMgr server; enables remote cert download when set       |
-| `DEBUG_SCRIPT`         |                                     | Set to any non-zero value to enable `log_debug` output                             |
-| `NGINX_LOG_LEVEL`      | `notice`                            | nginx `error_log` severity                                                         |
-| `NGINX_ACCESS_LOG`     | `off`                               | nginx access log path or `off`                                                     |
-| `NGINX_REPLACE_DOTS`   | `off`                               | nginx `server_name_in_redirect` / dot-replacement setting                          |
-| `NGINX_PORT`           | `1352`                              | NRPC listener port                                                                 |
-| `NGINX_HTTP_PORT`      | `8080`                              | HTTP listener port                                                                 |
-| `DOMINO_PORT`          | `1352`                              | Upstream Domino NRPC port                                                          |
-| `NGINX_CONNECTIONS`    | `8000`                              | `worker_connections` value                                                         |
-| `NGINX_RLIMIT_NOFILE`  | `65536`                             | `worker_rlimit_nofile` value                                                       |
-| `DOMINO_DEFAULT_ORG`   | `default`                           | Default Domino organisation name                                                   |
-| `NGINX_SERVER_NAME`    | `_`                                 | nginx `server_name` directive                                                      |
-| `NGINX_UPSTREAM`       | `127.0.0.1`                         | Upstream host/IP for proxied connections                                           |
-| `NGINX_METRICS_PORT`   | `9100`                              | Port nginx serves the metrics stub-status on                                       |
-| `NGINX_SSL_CERT`       | `/run/secrets/nginx/tls.crt`        | Path of the TLS certificate                                                        |
-| `NGINX_SSL_KEY`        | `/run/secrets/nginx/tls.key`        | Path of the TLS private key                                                        |
-| `NGINX_RESOLVER`       | First entry from `/etc/resolv.conf` | DNS resolver address for nginx                                                     |
-| `NGINX_RESOLVER_IPV6`  | `ipv6=off`                          | IPv6 resolver option string                                                        |
-| `NGINX_MAP_DEFAULT`    | `$nrpc_preread_server_name`         | Default mapping target in stream map block                                         |
-| `NGINX_MAP_INET`       | `$nrpc_preread_server_name`         | INET mapping target in stream map block                                            |
+| Variable                  | Default                             | Description                                                                        |
+|---------------------------|-------------------------------------|------------------------------------------------------------------------------------|
+| `METRICS_FILE`            | `/tmp/nginx-metrics.prom`           | Path of the Prometheus metrics output file                                         |
+| `INTERVAL_SECONDS`        | `10`                                | Main poll loop interval in seconds                                                 |
+| `CERT_CHECK_INTERVAL`     | `30`                                | Minimum seconds between CertMgr remote checks                                      |
+| `CONFIG_KEEP_RELEASES`    | `3`                                 | Number of old config release directories to retain                                 |
+| `PROXY_MODE`              | `nrpc`                              | Template set to load when no mounted config is present (`nrpc`, `stream`, `https`) |
+| `CERTMGR_HOST`            |                                     | Hostname of the Domino CertMgr server; enables remote cert download when set       |
+| `DEBUG_SCRIPT`            |                                     | Set to any non-zero value to enable `log_debug` output                             |
+| `NGINX_LOG_LEVEL`         | `notice`                            | nginx `error_log` severity                                                         |
+| `NGINX_ACCESS_LOG`        | `off`                               | nginx access log path or `off`                                                     |
+| `NGINX_REPLACE_DOTS`      | `off`                               | nginx `server_name_in_redirect` / dot-replacement setting                          |
+| `NGINX_PORT`              | `1352`                              | NRPC listener port                                                                 |
+| `NGINX_HTTP_PORT`         | `8080`                              | HTTP listener port                                                                 |
+| `DOMINO_PORT`             | `1352`                              | Upstream Domino NRPC port                                                          |
+| `NGINX_CONNECTIONS`       | `8000`                              | `worker_connections` value                                                         |
+| `NGINX_RLIMIT_NOFILE`     | `65536`                             | `worker_rlimit_nofile` value                                                       |
+| `DOMINO_DEFAULT_ORG`      | `default`                           | Default Domino organisation name                                                   |
+| `NGINX_SERVER_NAME`       | `_`                                 | nginx `server_name` directive                                                      |
+| `NGINX_UPSTREAM`          | `127.0.0.1`                         | Upstream host/IP for proxied connections                                           |
+| `NGINX_METRICS_PORT`      | `9100`                              | Port nginx serves the metrics stub-status on                                       |
+| `NGINX_SSL_CERT`          | `/run/secrets/nginx/tls.crt`        | Path of the TLS certificate                                                        |
+| `NGINX_SSL_KEY`           | `/run/secrets/nginx/tls.key`        | Path of the TLS private key                                                        |
+| `NGINX_SSL_PASSWORD_FILE` | `/run/secrets/nginx/tls.pass`       | Path of the TLS key password file                                                  |
+| `NGINX_RESOLVER`          | First entry from `/etc/resolv.conf` | DNS resolver address for nginx                                                     |
+| `NGINX_RESOLVER_IPV6`     | `ipv6=off`                          | IPv6 resolver option string                                                        |
+| `NGINX_MAP_DEFAULT`       | `$nrpc_preread_server_name`         | Default mapping target in stream map block                                         |
+| `NGINX_MAP_INET`          | `$nrpc_preread_server_name`         | INET mapping target in stream map block                                            |
 
 
 ## Angie specific Environment Variables
 
-| Variable               | Default                             | Description                                                                        |
-|------------------------|-------------------------------------|------------------------------------------------------------------------------------|
-| `NGINX_ACME_SERVER`    | Let's Encrypt staging URL           | ACME directory URL                                                                 |
-| `NGINX_ACME_EMAIL`     |                                     | ACME account e-mail                                                                |
+| Variable                  | Default                             | Description                                                                        |
+|---------------------------|-------------------------------------|------------------------------------------------------------------------------------|
+| `NGINX_ACME_SERVER`       | Let's Encrypt staging URL           | ACME directory URL                                                                 |
+| `NGINX_ACME_EMAIL`        |                                     | ACME account e-mail                                                                |
 
 
 ---
