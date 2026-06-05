@@ -1,0 +1,32 @@
+name: Cleanup GHCR Images
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+
+    steps:
+      - name: Cleanup old container images
+        uses: snok/container-retention-policy@v3
+        with:
+          account: nashcom
+          image-names: domino-nrpc-proxy
+
+          # keep latest images
+          keep-at-least: 1
+
+          # preserve these tags
+          tags: |
+            latest
+            develop
+            v*
+
+          cut-off: 1h
+
+          timestamp-to-use: updated_at
+
