@@ -1,4 +1,4 @@
-name: Cleanup GHCR Images
+name: Cleanup GHCR
 
 on:
   workflow_dispatch:
@@ -11,22 +11,25 @@ jobs:
       packages: write
 
     steps:
-      - name: Cleanup old container images
-        uses: snok/container-retention-policy@v3
-        with:
-          account: nashcom
-          image-names: domino-nrpc-proxy
+      - name: Delete old image versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: domino-nrpc-proxy
+          OWNER: nashcom
+        run: |
+          gh api \
+            "/orgs/$OWNER/packages/container/$PACKAGE/versions" \
+            --paginate > versions.json
 
-          # keep latest images
-          keep-at-least: 1
+          jq -r '
+            sort_by(.created_at) | reverse |
+            .[1:][] | .id
+          ' versions.json |
+          while read ID
+          do
+            echo "Deleting version $ID"
 
-          # preserve these tags
-          tags: |
-            latest
-            develop
-            v*
-
-          cut-off: 1h
-
-          timestamp-to-use: updated_at
-
+            gh api \
+              -X DELETE \
+              "/orgs/$OWNER/packages/container/$PACKAGE/versions/$ID"
+          done
