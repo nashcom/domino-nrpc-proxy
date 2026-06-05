@@ -16,6 +16,8 @@
 ## Environment Variables
 
 Most variables have defaults and are registered for `envsubst` into nginx config templates.
+The secrets run-time directory is `/tls`. Certificates and keys are copied from `/run/secrets/nginx` directory.
+
 
 | Variable                  | Default                             | Description                                                                        |
 |---------------------------|-------------------------------------|------------------------------------------------------------------------------------|

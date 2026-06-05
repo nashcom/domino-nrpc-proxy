@@ -11,7 +11,8 @@ PREFIX="${PREFIX:-DominoProxy}"
 METRICS_FILE="${METRICS_FILE:-/tmp/nginx-metrics.prom}"
 
 NGINX_CFG_TEMPLATE_DIR="/run/config/nginx"
-NGINX_CERT_DIR="/run/secrets/nginx"
+NGINX_CERT_CFG_DIR="/run/secrets/nginx"
+NGINX_CERT_DIR="/tls"
 
 NGINX_CFG_BASE_DIR=/tmp/ngx_cfg
 NGINX_CFG_DIR="$NGINX_CFG_BASE_DIR/current"
@@ -348,6 +349,53 @@ show_cert()
   echo
 }
 
+copy_if_newer()
+{
+    local SRC="$1"
+    local DST="$2"
+
+    if [ ! -f "$SRC" ]; then
+        return 1
+    fi
+
+    if [ ! -f "$DST" ] || [ "$SRC" -nt "$DST" ]; then
+        log_debug "Copying $(basename "$SRC")"
+        cp -f "$SRC" "$DST" || return 1
+    fi
+
+    return 0
+}
+
+log_debug()
+{
+  echo "$@"
+}
+
+
+copy_runtime_secrets()
+{
+  local REL_PATH=
+  local DST_FILE=
+
+  if [ -z "$1" ]; then
+    return 0
+  fi
+
+  if [ -z "$2" ]; then
+    return 0
+  fi
+
+  while IFS= read -r -d '' SRC_FILE
+  do
+    REL_PATH="${SRC_FILE#$1/}"
+    DST_FILE="$2/$REL_PATH"
+
+    mkdir -p "$(dirname "$DST_FILE")"
+    copy_if_newer "$SRC_FILE" "$DST_FILE"
+
+  done < <(find "$1" -type f -print0)
+}
+
 
 cert_update()
 {
@@ -568,6 +616,8 @@ cert_update_check()
   local NOW
   local ELAPSED
 
+  copy_runtime_secrets "$NGINX_CERT_CFG_DIR" "$NGINX_CERT_DIR"
+
   # If no CertMgr server is configured, just check certificate files have been updated
   if [ -z "$CERTMGR_HOST" ]; then
     local FILES_MODIFIED=
@@ -625,6 +675,7 @@ cert_update_check()
   nginx_reload
   return 0
 }
+
 
 wait_for_tls_config()
 {

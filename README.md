@@ -92,11 +92,11 @@ The project supports two proxy runtimes:
 
 Three proxy modes are available via the `PROXY_MODE` environment variable:
 
-| Mode | Description |
-|------|-------------|
+| Mode             | Description |
+|------------------|-------------|
 | `nrpc` (default) | HCL Domino NRPC routing |
-| `stream` | Generic TCP stream proxy |
-| `https` | HTTPS reverse proxy (Angie with automatic certificates) |
+| `stream`         | Generic TCP stream proxy |
+| `https`          | HTTPS reverse proxy (Angie with automatic certificates) |
 
 See [Angie Integration](angie.md) for details on the Angie runtime and [Proxy Modes](proxy-modes.md) for full proxy mode documentation.
 

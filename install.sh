@@ -205,6 +205,7 @@ fi
 
 useradd nginx -U
 
+create_dir /tls
 create_dir /var/nginx
 create_dir /tmp/nginx
 create_dir /tmp/angie
