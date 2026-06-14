@@ -387,6 +387,10 @@ copy_runtime_secrets()
     return 0
   fi
 
+  if [ ! -d "$1" ]; then
+    return 0
+  fi
+
   while IFS= read -r -d '' SRC_FILE
   do
     REL_PATH="${SRC_FILE#$1/}"
@@ -665,10 +669,13 @@ cert_update_check()
   CERT_LAST_CHECK_EPOCH="$NOW"
   CERTS_UPDATED=
 
-  while IFS= read -r -d '' CERT_FILE
-  do
-    process_certificate "$CERT_FILE"
-  done < <(find "$NGINX_CERT_DIR" -type f -name "*.crt" -print0)
+
+  if [ -d "$NGINX_CERT_DIR" ]; then
+    while IFS= read -r -d '' CERT_FILE
+    do
+      process_certificate "$CERT_FILE"
+    done < <(find "$NGINX_CERT_DIR" -type f -name "*.crt" -print0)
+  fi
 
   if [ -z "$CERTS_UPDATED" ]; then
     return 0
