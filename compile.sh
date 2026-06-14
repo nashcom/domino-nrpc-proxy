@@ -177,7 +177,7 @@ build_nginx()
     --add-dynamic-module=.. \
     --with-stream_ssl_preread_module \
     --with-http_ssl_module \
-    --with-ipv6 \
+    --with-http_v2_module \
  \
     --prefix=/var/$TARGET \
     --sbin-path=/$TARGET \
@@ -209,6 +209,7 @@ build_angie()
     --with-stream_mqtt_preread_module \
     --with-stream_rdp_preread_module \
     --with-http_ssl_module \
+    --with-http_v2_module \
     --with-http_acme_module \
  \
     --prefix=/var/$TARGET \
