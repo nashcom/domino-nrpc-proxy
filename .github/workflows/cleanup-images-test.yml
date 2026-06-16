@@ -1,0 +1,68 @@
+name: Cleanup GHCR Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete all but current latest and dev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: nashcom
+          PACKAGE: domino-nrpc-proxy
+        run: |
+          set -euo pipefail
+
+          gh api \
+            "/orgs/$OWNER/packages/container/$PACKAGE/versions" \
+            --paginate > versions.json
+
+          KEEP_IDS=$(
+            jq -r '
+              [
+                (
+                  map(select(
+                    (.metadata.container.tags // []) | index("latest")
+                  ))
+                  | sort_by(.created_at)
+                  | last
+                  | .id
+                ),
+                (
+                  map(select(
+                    (.metadata.container.tags // []) | index("dev")
+                  ))
+                  | sort_by(.created_at)
+                  | last
+                  | .id
+                )
+              ]
+              | unique
+              | .[]
+            ' versions.json
+          )
+
+          echo "Keeping version IDs:"
+          echo "$KEEP_IDS"
+
+          jq -r '.[].id' versions.json |
+          while read ID
+          do
+            if echo "$KEEP_IDS" | grep -qx "$ID"
+            then
+              echo "Keeping version $ID"
+              continue
+            fi
+
+            echo "Deleting version $ID"
+
+            gh api \
+              -X DELETE \
+              "/orgs/$OWNER/packages/container/$PACKAGE/versions/$ID"
+          done
