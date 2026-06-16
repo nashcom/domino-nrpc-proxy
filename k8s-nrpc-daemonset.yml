@@ -26,7 +26,7 @@ spec:
           value: "on"
         - name: NGINX_MAP_DEFAULT
           value: $nrpc_preread_server_name.domino.svc.cluster.local
-        image: nashcom/domino:nrpc
+        image: ghcr.io/nashcom/domino-nrpc-proxy:latest
         imagePullPolicy: Always
         name: nrpc
         ports:
@@ -36,8 +36,6 @@ spec:
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000
-      imagePullSecrets:
-      - name: regcred
       restartPolicy: Always
       securityContext:
         fsGroup: 1000
