@@ -2,10 +2,10 @@ apiVersion: apps/v1
 kind: DaemonSet
 
 metadata:
-  labels:
-    app: nrpc
   name: nrpc
   namespace: domino
+  labels:
+    app: nrpc
 
 spec:
   selector:
@@ -19,50 +19,48 @@ spec:
 
     spec:
       containers:
-      - env:
-        - name: LANG
-          value: en_US.UTF-8
-        - name: NGINX_REPLACE_DOTS
-          value: "on"
-        - name: NGINX_MAP_DEFAULT
-          value: $nrpc_preread_server_name.domino.svc.cluster.local
-        image: ghcr.io/nashcom/domino-nrpc-proxy:latest
-        imagePullPolicy: Always
-        name: nrpc
-        ports:
-        - containerPort: 1352
-          hostPort: 1352
-          protocol: TCP
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1000
-      restartPolicy: Always
+        - name: nrpc
+          image: ghcr.io/nashcom/domino-nrpc-proxy:latest
+          imagePullPolicy: Always
+
+          env:
+            - name: LANG
+              value: en_US.UTF-8
+
+            - name: NGINX_REPLACE_DOTS
+              value: "on"
+
+            - name: NGINX_MAP_DEFAULT
+              value: "$nrpc_preread_server_name.domino.svc.cluster.local"
+
+          ports:
+            - name: nrpc
+              containerPort: 1352
+              hostPort: 1352
+              protocol: TCP
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+
+          readinessProbe:
+            tcpSocket:
+              port: 1352
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            tcpSocket:
+              port: 1352
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
+
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
         runAsNonRoot: true
         runAsUser: 1000
+
       terminationGracePeriodSeconds: 5
-
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: domino-nrpc-lb
-  namespace: domino
-  annotations:
-    metallb.io/allow-shared-ip: "nginx-shared"
-spec:
-  type: LoadBalancer
-  loadBalancerIP: 1.2.3.4 
-  selector:
-    app: nrpc
-  ports:
-    - name: nrpc
-      port: 1352
-      targetPort: 1352
-      protocol: TCP
-
-  externalTrafficPolicy: Cluster # Local
-
