@@ -14,13 +14,8 @@ ENV VERSION=$VERSION
 USER root
 
 # Build inputs
-COPY current_version.txt /
-COPY compile.sh /
-COPY config /
-COPY ngx_stream_nrpc_preread_module.c /
-COPY nrpc_version.h /
+COPY current_version.txt compile.sh config ngx_stream_nrpc_preread_module.c nrpc_version.h entrypoint.sh lego_deploy_hook.sh /
 COPY cfg /cfg
-COPY entrypoint.sh /
 
 # Build binary + module
 RUN /compile.sh
@@ -36,13 +31,12 @@ ARG IMAGE_NAME="Domino NRPC Proxy"
 ARG NRPC_PROXY_VER
 ARG BUILD_DATE
 ARG BUILDTIME
+ARG LEGO_INSTALL
 
 ENV TARGET=$TARGET
 
 # Copy build artifacts
-COPY --from=build /$TARGET /
-COPY --from=build /ngx_stream_nrpc_preread_module.so /
-COPY --from=build /entrypoint.sh /
+COPY --from=build /$TARGET /ngx_stream_nrpc_preread_module.so /entrypoint.sh /lego_deploy_hook.sh /
 COPY --from=build /cfg /cfg
 
 # Install + permissions

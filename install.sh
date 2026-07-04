@@ -1,7 +1,17 @@
 #!/bin/sh
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
 ############################################################################
+
+
+LEGO_INSTALL_PATH="${LEGO_INSTALL_PATH:-/lego}"
+
+if [ -z "$LEGO_VERSION" ]; then
+  LEGO_VERSION="5.2.2"
+  LEGO_AMD64_SHA256="018de6d3f2da09630caa2fbbe8c6aa459323ad0ac0a053d0e808268914b38a8b"
+  LEGO_ARM64_SHA256="92c9d7d2a6377cdd4702bfaf7e0f61ea167456f1686a3899a12f289fe863c49b"
+fi
+
 
 # --- Begin Helper functions ---
 
@@ -191,16 +201,67 @@ create_dir()
   chmod 750 "$1"
 }
 
-# --- End Helper functions ---
 
+DownloadAndProcess()
+{
+  local DOWNLOAD_FILE="$1"
+  local PROCESS_CMD="$2"
+  local EXPECTED_HASH="${3:-}"
+
+  local HASH=$(curl -fsSL "$DOWNLOAD_FILE" | tee >(eval "$PROCESS_CMD" 2>/dev/null) | sha256sum -b | awk '{print $1}')
+
+  if [ -z "$HASH" ]; then
+    echo "Download failed: $DOWNLOAD_FILE"
+    exit 1
+  fi
+
+  if [ -n "$EXPECTED_HASH" ] && [ "$HASH" != "$EXPECTED_HASH" ]; then
+    echo "SHA256 mismatch for $DOWNLOAD_FILE"
+    echo "Expected: $EXPECTED_HASH"
+    echo "Actual:   $HASH"
+    exit 1
+  fi
+
+  echo "$HASH"
+}
+
+
+InstallLego()
+{
+  case "$(uname -m)" in
+    x86_64|amd64)
+      LEGO_ARCH=amd64
+      LEGO_SHA256=$LEGO_AMD64_SHA256
+      ;;
+    aarch64|arm64)
+      LEGO_ARCH=arm64
+      LEGO_SHA256=$LEGO_ARM64_SHA256
+      ;;
+    *)
+      echo "Unsupported architecture: $(uname -m)" >&2
+      exit 1
+      ;;
+  esac
+
+  local LEGO_URL="https://github.com/go-acme/lego/releases/download/v${LEGO_VERSION}/lego_v${LEGO_VERSION}_linux_${LEGO_ARCH}.tar.gz"
+  local LEGO_HASH=$(DownloadAndProcess "$LEGO_URL" "tar -xzO lego > $LEGO_INSTALL_PATH" "$LEGO_SHA256")
+
+  chmod 755 "$LEGO_INSTALL_PATH"
+
+  echo "Installed lego $("$LEGO_INSTALL_PATH" --version 2>/dev/null | head -1) at $LEGO_INSTALL_PATH"
+  echo "Archive SHA256: $LEGO_HASH"
+}
+
+
+# --- End Helper functions ---
 
 check_linux_update
 
 if [ -x /sbin/apk ]; then
   # Alpine package names are different
-  install_packages gettext findutils shadow pcre bash openssl
+  install_packages gettext findutils shadow pcre bash openssl curl
 else
-  install_packages hostname gettext bind-utils findutils shadow-utils openssl
+  install_packages hostname gettext bind-utils findutils shadow-utils openssl curl
 fi
 
 useradd nginx -U
@@ -211,18 +272,32 @@ create_dir /tmp/nginx
 create_dir /tmp/angie
 create_dir /var/angie
 create_dir /var/angie/acme_client
+create_dir /run/secrets/nginx
 
 chown root:nginx /entrypoint.sh
 chown root:nginx "/$TARGET"
 chown root:nginx /ngx_stream_nrpc_preread_module.so
+chown root:nginx /lego_deploy_hook.sh
+chown root:nginx -R /run/secrets
 
 chmod 550 /entrypoint.sh
 chmod 550 "/$TARGET"
 chmod 550 /ngx_stream_nrpc_preread_module.so
+chmod 550 /lego_deploy_hook.sh
+chmod 770 -R /run/secrets
 
 chown root:nginx /*_template.conf
 chmod 440 /*_template.conf
 
 check_linux_update
 clean_linux_repo_cache
+
+# --- LEGO ACME support ---
+
+if [ "$LEGO_INSTALL" = "no" ]; then
+  echo "Skipping LEGO ACME support installation"
+else
+  header "Installing LEGO ACME Support"
+  InstallLego
+fi
 

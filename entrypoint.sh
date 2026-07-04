@@ -2,7 +2,7 @@
 
 ############################################################################
 # Copyright Nash!Com, Daniel Nashed 2023-2026 - APACHE 2.0 see LICENSE
-##########################################################################
+############################################################################
 
 # Ignore errors to not fail the container
 set +e
@@ -894,6 +894,125 @@ register_variables()
 }
 
 
+lego_configure()
+{
+  NGINX_UID=${NGINX_UID:-1000}
+  NGINX_GID=${NGINX_GID:-1000}
+
+  LEGO_BIN="${LEGO_BIN:-/lego}"
+
+  if [ -n "$HOSTNAME" ]; then
+    export LEGO_DOMAINS="$HOSTNAME"
+  else
+    export LEGO_DOMAINS="${LEGO_DOMAINS:-$(hostname -f)}"
+  fi
+
+  export LEGO_SERVER="${LEGO_SERVER:-letsencrypt-staging}"
+  export LEGO_HTTP="${LEGO_HTTP:-true}"
+  export LEGO_KEY_TYPE="${LEGO_KEY_TYPE:-EC256}"
+  export LEGO_ACCEPT_TOS="${LEGO_ACCEPT_TOS:-true}"
+  export LEGO_REUSE_KEY="${LEGO_REUSE_KEY:-false}"
+  export LEGO_CERT_NAME="${LEGO_CERT_NAME:-nginx}"
+  export LEGO_PEM="${LEGO_PEM:-true}"
+  export LEGO_PATH="${LEGO_PATH:-/tmp/lego}"
+  export LEGO_LOG_LEVEL="${LEGO_LOG_LEVEL:-info}"
+
+  if [ -n "$LEGO_EMAIL" ]; then
+    export LEGO_EMAIL
+  fi
+
+  if [ -n "$LEGO_HTTP_WEBROOT" ]; then
+    export LEGO_HTTP_WEBROOT
+    mkdir -p "$LEGO_HTTP_WEBROOT/.well-known/acme-challenge"
+  fi
+
+  export LEGO_DEPLOY_HOOK="/lego_deploy_hook.sh"
+}
+
+
+secure_tls_deploy()
+{
+  local cert="$1"
+  local key="$2"
+
+  chmod 644 "$cert"
+  chmod 600 "$key"
+
+  if [ "$(id -u)" = "0" ]; then
+    chown "$NGINX_UID:$NGINX_GID" "$cert" "$key"
+  fi
+}
+
+
+lego_deploy_hook()
+{
+  echo "[lego_cert] DEPLOY: certificate issued, deploying"
+
+  local DEPLOY_DIR="${DEPLOY_DIR:-/run/secrets/nginx}"
+  local CERT_NAME="${LEGO_CERT_NAME:-nginx}"
+
+  mkdir -p "$DEPLOY_DIR"
+
+  cp "$LEGO_PATH/certificates/${CERT_NAME}.crt" "$DEPLOY_DIR/tls.crt"
+  cp "$LEGO_PATH/certificates/${CERT_NAME}.key" "$DEPLOY_DIR/tls.key"
+
+  secure_tls_deploy "$DEPLOY_DIR/tls.crt" "$DEPLOY_DIR/tls.key"
+
+  # Reload the nginx serving this certificate to pick up the new files.
+  if pgrep -x nginx > /dev/null 2>&1; then
+    nginx -s reload
+    echo "[lego_cert] DEPLOY: nginx reloaded"
+  else
+    echo "[lego_cert] DEPLOY: nginx not running, skipped reload"
+  fi
+}
+
+
+init_tls_cert()
+{
+  local DEPLOY_DIR="${DEPLOY_DIR:-/run/secrets/nginx}"
+
+  if [ ! -d "$DEPLOY_DIR" ]; then
+    echo "No certiificate directory found: $DEPLOY_DIR"
+    return 0
+  fi
+
+  if [ -f "$DEPLOY_DIR/tls.crt" ] && [ -f "$DEPLOY_DIR/tls.key" ]; then
+    echo "[lego_cert] INIT: tls.crt/tls.key already present in $DEPLOY_DIR, nothing to do"
+    return
+  fi
+
+  local domain="${LEGO_DOMAINS:-$(hostname -f)}"
+
+  echo "[lego_cert] INIT: no certificate in $DEPLOY_DIR - creating a self-signed placeholder for $domain so nginx can start"
+
+  mkdir -p "$DEPLOY_DIR"
+
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -noenc \
+    -keyout "$DEPLOY_DIR/tls.key" \
+    -out "$DEPLOY_DIR/tls.crt" \
+    -days 30 \
+    -subj "/CN=$domain" \
+    -addext "subjectAltName=DNS:$domain"
+
+  secure_tls_deploy "$DEPLOY_DIR/tls.crt" "$DEPLOY_DIR/tls.key"
+}
+
+
+lego_request()
+{
+  local ACTION=run
+
+  if [ -n "$1" ]; then
+    ACTION="$1"
+  fi
+
+  mkdir -p "$LEGO_PATH"
+
+  "$LEGO_BIN" "$ACTION"
+}
+
+
 # --- Main ---
 
 
@@ -975,13 +1094,32 @@ dump_file "$NGINX_CFG"
 RUNNING=1
 trap 'RUNNING=0' TERM INT
 
+# LEGO ACME is tiggered by accepting terms of services
+
+if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
+
+  lego_configure
+  # Make sure we always have a cert and key
+  init_tls_cert
+
+  if [ -x /lego ]; then
+    lego_request run
+  else
+    echo "LEGO not installed"
+    export LEGO_ACCEPT_TOS=
+  fi
+fi
+
 while [ "$RUNNING" -eq 1 ]
 do
   sleep "$INTERVAL_SECONDS" || break
+
+  if [ "LEGO_ACCEPT_TOS" = "true" ]; then
+    lego_request renew
+  fi
+
   process_loop || true
 done
-
-stop_nginx
 
 echo "Entrypoint terminated"
 

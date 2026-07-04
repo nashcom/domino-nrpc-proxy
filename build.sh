@@ -37,6 +37,10 @@ for arg in "$@"; do
             ANGIE_VER="${arg#-angie=}"
             ;;
 
+        -no-lego)
+            LEGO_INSTALL="no"
+            ;;
+
         *)
             echo "Invalid parameter [$arg]"
             exit 1
@@ -108,6 +112,7 @@ docker build --no-cache -t domino-nrpc-proxy:$IMAGE_TAG \
   --build-arg NRPC_PROXY_VER=$NRPC_PROXY_VER \
   --build-arg BUILD_DATE=$BUILD_DATE \
   --build-arg BUILDTIME="$BUILDTIME" \
+  --build-arg LEGO_INSTALL="$LEGO_INSTALL" \
   --label ${TARGET}-version=$VERSION \
   .
 
