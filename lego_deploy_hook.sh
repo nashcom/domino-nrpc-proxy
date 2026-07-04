@@ -4,6 +4,58 @@
 # Copyright Nash!Com, Daniel Nashed 2026 - APACHE 2.0 see LICENSE
 ############################################################################
 
+delim()
+{
+  echo "----------------------------------------"
+}
+
+delim_long()
+{
+  echo "------------------------------------------------------------"
+}
+
+
+header()
+{
+  echo
+  delim
+  echo "$@"
+  delim
+  echo
+}
+
+
+show_cert()
+{
+  if [ -z "$1" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$1" ]; then
+    return 0
+  fi
+
+  header "New Certificate"
+
+  local SAN=$(openssl x509 -in "$1" -noout -ext subjectAltName | grep -E 'DNS:|IP Address:' | xargs )
+  local SUBJECT=$(openssl x509 -in "$1" -noout -subject | cut -d '=' -f 2- )
+  local ISSUER=$(openssl x509 -in "$1" -noout -issuer | cut -d '=' -f 2- )
+  local EXPIRATION=$(openssl x509 -in "$1" -noout -enddate | cut -d '=' -f 2- )
+  local FINGERPRINT=$(openssl x509 -in "$1" -noout -fingerprint | cut -d '=' -f 2- )
+  local SERIAL=$(openssl x509 -in "$1" -noout -serial | cut -d '=' -f 2- )
+
+  echo
+  echo "SAN         : $SAN"
+  echo "Subject     : $SUBJECT"
+  echo "Issuer      : $ISSUER"
+  echo "Expiration  : $EXPIRATION"
+  echo "Fingerprint : $FINGERPRINT"
+  echo "Serial      : $SERIAL"
+  echo "File        : $1"
+  echo
+}
+
+
 
 secure_tls_deploy()
 {
@@ -15,34 +67,23 @@ secure_tls_deploy()
 
   if [ "$(id -u)" = "0" ]; then
     chown "$NGINX_UID:$NGINX_GID" "$cert" "$key"
-  else
-    echo "[lego_cert] not running as root - cannot chown to $NGINX_UID:$NGINX_GID."
-    echo "[lego_cert] making $(basename "$key") group/world-readable so UID $NGINX_UID can read it."
-    chmod 644 "$key"
   fi
 }
 
 
 lego_deploy_hook()
 {
-  echo "[lego_cert] DEPLOY: certificate issued, deploying"
+  NGINX_CERT_DIR=/tls
 
-  local DEPLOY_DIR="${DEPLOY_DIR:-/run/secrets/nginx}"
+  header "Deploying certificate to $NGINX_CERT_DIR"
+
   local CERT_NAME="${LEGO_CERT_NAME:-nginx}"
 
-  mkdir -p "$DEPLOY_DIR"
+  cp "$LEGO_PATH/certificates/${CERT_NAME}.crt" "$NGINX_CERT_DIR/tls.crt"
+  cp "$LEGO_PATH/certificates/${CERT_NAME}.key" "$NGINX_CERT_DIR/tls.key"
 
-  cp "$LEGO_PATH/certificates/${CERT_NAME}.crt" "$DEPLOY_DIR/tls.crt"
-  cp "$LEGO_PATH/certificates/${CERT_NAME}.key" "$DEPLOY_DIR/tls.key"
-
-  secure_tls_deploy "$DEPLOY_DIR/tls.crt" "$DEPLOY_DIR/tls.key"
-
-  # Reload the nginx serving this certificate to pick up the new files.
-  if pgrep -x nginx > /dev/null 2>&1; then
-    nginx -s reload
-    echo "[lego_cert] DEPLOY: nginx reloaded"
-  else
-    echo "[lego_cert] DEPLOY: nginx not running, skipped reload"
-  fi
+  secure_tls_deploy "$NGINX_CERT_DIR/tls.crt" "$NGINX_CERT_DIR/tls.key"
 }
 
+
+lego_deploy_hook

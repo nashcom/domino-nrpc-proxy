@@ -51,7 +51,7 @@ log_space()
 }
 
 
-log_error()
+/log_error()
 {
   log "ERROR: $@"
 }
@@ -627,11 +627,12 @@ cert_update_check()
 
   # If no CertMgr server is configured, just check certificate files have been updated
   if [ -z "$CERTMGR_HOST" ]; then
+
     local FILES_MODIFIED=
 
     if [ -z "$CERTS_LAST_UPDATED" ]; then
       # No update needed if certs don't need to be copied
-      FILES_MODIFIED=
+      FILES_MODIFIED=$(find "$NGINX_CERT_DIR" -type f)
 
     elif [ -e "$CERTS_LAST_UPDATE_CHECK_FILE" ]; then
 
@@ -841,7 +842,6 @@ register_var()
 
 register_variables()
 {
-
   if [ -z "$NGINX_RESOLVER" ]; then
     NGINX_RESOLVER=$(grep -i '^nameserver' /etc/resolv.conf | head -n1 | cut -d ' ' -f2)
   fi
@@ -900,6 +900,7 @@ lego_configure()
   NGINX_GID=${NGINX_GID:-1000}
 
   LEGO_BIN="${LEGO_BIN:-/lego}"
+  LEGO_CERT_CHECK_INTERVAL="${LEGO_CERT_CHECK_INTERVAL:-86400}" # Default is 24 hours
 
   if [ -n "$HOSTNAME" ]; then
     export LEGO_DOMAINS="$HOSTNAME"
@@ -921,10 +922,12 @@ lego_configure()
     export LEGO_EMAIL
   fi
 
-  if [ -n "$LEGO_HTTP_WEBROOT" ]; then
+  if [ -z "$LEGO_HTTP_WEBROOT" ]; then
+    LEGO_HTTP_WEBROOT=/tmp/lego_web_root
     export LEGO_HTTP_WEBROOT
-    mkdir -p "$LEGO_HTTP_WEBROOT/.well-known/acme-challenge"
   fi
+
+  mkdir -p "$LEGO_HTTP_WEBROOT/.well-known/acme-challenge"
 
   export LEGO_DEPLOY_HOOK="/lego_deploy_hook.sh"
 }
@@ -944,58 +947,34 @@ secure_tls_deploy()
 }
 
 
-lego_deploy_hook()
-{
-  echo "[lego_cert] DEPLOY: certificate issued, deploying"
-
-  local DEPLOY_DIR="${DEPLOY_DIR:-$NGINX_CERT_DIR}"
-  local CERT_NAME="${LEGO_CERT_NAME:-nginx}"
-
-  mkdir -p "$DEPLOY_DIR"
-
-  cp "$LEGO_PATH/certificates/${CERT_NAME}.crt" "$DEPLOY_DIR/tls.crt"
-  cp "$LEGO_PATH/certificates/${CERT_NAME}.key" "$DEPLOY_DIR/tls.key"
-
-  secure_tls_deploy "$DEPLOY_DIR/tls.crt" "$DEPLOY_DIR/tls.key"
-
-  # Reload the nginx serving this certificate to pick up the new files.
-  if pgrep -x nginx > /dev/null 2>&1; then
-    nginx -s reload
-    echo "[lego_cert] DEPLOY: nginx reloaded"
-  else
-    echo "[lego_cert] DEPLOY: nginx not running, skipped reload"
-  fi
-}
-
-
 init_tls_cert()
 {
-  local DEPLOY_DIR="${DEPLOY_DIR:-$NGINX_CERT_DIR}"
-
-  if [ ! -d "$DEPLOY_DIR" ]; then
-    echo "No certiificate directory found: $DEPLOY_DIR"
+  if [ ! -d "$NGINX_CERT_DIR" ]; then
+    echo "No certiificate found in $NGINX_CERT_DIR"
     return 0
   fi
 
-  if [ -f "$DEPLOY_DIR/tls.crt" ] && [ -f "$DEPLOY_DIR/tls.key" ]; then
-    echo "[lego_cert] INIT: tls.crt/tls.key already present in $DEPLOY_DIR, nothing to do"
+  if [ -f "$NGINX_CERT_DIR/tls.crt" ] && [ -f "$NGINX_CERT_DIR/tls.key" ]; then
+    echo "tls.crt/tls.key already present in $NGINX_CERT_DIR - nothing to do"
     return
   fi
 
   local domain="${LEGO_DOMAINS:-$(hostname -f)}"
 
-  echo "[lego_cert] INIT: no certificate in $DEPLOY_DIR - creating a self-signed placeholder for $domain so nginx can start"
+  header "Creating Self Signed Certificate"
 
-  mkdir -p "$DEPLOY_DIR"
+  echo "Info: No certificate found in $NGINX_CERT_DIR. Creating a self-signed placeholder for $domain so nginx can start"
 
   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -noenc \
-    -keyout "$DEPLOY_DIR/tls.key" \
-    -out "$DEPLOY_DIR/tls.crt" \
+    -keyout "$NGINX_CERT_DIR/tls.key" \
+    -out "$NGINX_CERT_DIR/tls.crt" \
     -days 30 \
     -subj "/CN=$domain" \
     -addext "subjectAltName=DNS:$domain"
 
-  secure_tls_deploy "$DEPLOY_DIR/tls.crt" "$DEPLOY_DIR/tls.key"
+  header "Self Signed Certificate"
+  secure_tls_deploy "$NGINX_CERT_DIR/tls.crt" "$NGINX_CERT_DIR/tls.key"
+  show_cert "$NGINX_CERT_DIR/tls.crt"
 }
 
 
@@ -1009,16 +988,44 @@ lego_request()
 
   mkdir -p "$LEGO_PATH"
 
-  "$LEGO_BIN" "$ACTION"
+  if curl -fsS http://127.0.0.1:80/ >/dev/null 2>&1; then
+    header "Running ACME request with NGINX web root"
+    "$LEGO_BIN" "$ACTION"
+
+  else
+    header "Running ACME request with LEGO web root"
+
+    (
+      unset LEGO_HTTP_WEBROOT
+      "$LEGO_BIN" run
+    )
+  fi
+
+  LAST_RENEW_CHECK=$(date +%s)
+}
+
+
+cert_renew_check()
+{
+  NOW=$(date +%s)
+  if [ $(( NOW - LAST_RENEW_CHECK )) -lt "$LEGO_CERT_CHECK_INTERVAL" ]; then
+    return
+  fi
+
+  LAST_RENEW_CHECK=$NOW
+  lego_request run
 }
 
 
 # --- Main ---
 
-
 # Main entry point for runtime (nginx / angie)
 
 log_debug "--- entrypoint.sh ---"
+
+header "Environment variables"
+env
+echo
 
 # Set more paranoid umask to ensure files can be only read by user
 umask 0077
@@ -1068,12 +1075,22 @@ register_variables
 
 sleep "${STARTUP_DELAY:-0}"
 
+if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
+  lego_configure
+
+  # Make sure we always have a cert and key
+  init_tls_cert
+fi
+
 # Copy TLS certs and keys first
 copy_runtime_secrets "$NGINX_CERT_CFG_DIR" "$NGINX_CERT_DIR"
 
 if [ -n "$CERTMGR_HOST" ]; then
   wait_for_tls_config
 fi
+
+# Set first cert deployment time after getting certs and before starting NGINX
+CERTS_LAST_UPDATED=$(date +%s)
 
 EPOCH=$(date +%s)
 nginx_start || true
@@ -1091,16 +1108,9 @@ echo
 
 dump_file "$NGINX_CFG"
 
-RUNNING=1
-trap 'RUNNING=0' TERM INT
-
 # LEGO ACME is tiggered by accepting terms of services
 
 if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
-
-  lego_configure
-  # Make sure we always have a cert and key
-  init_tls_cert
 
   if [ -x /lego ]; then
     lego_request run
@@ -1108,14 +1118,20 @@ if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
     echo "LEGO not installed"
     export LEGO_ACCEPT_TOS=
   fi
+
+else
+  echo "Info: LEGO ACME is disabled"
 fi
+
+RUNNING=1
+trap 'RUNNING=0' TERM INT
 
 while [ "$RUNNING" -eq 1 ]
 do
   sleep "$INTERVAL_SECONDS" || break
 
-  if [ "LEGO_ACCEPT_TOS" = "true" ]; then
-    lego_request renew
+  if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
+    cert_renew_check
   fi
 
   process_loop || true
