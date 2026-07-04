@@ -49,6 +49,21 @@ The secrets run-time directory is `/tls`. Certificates and keys are copied from 
 | `NGINX_MAP_INET`          | `$nrpc_preread_server_name`         | INET mapping target in stream map block                                            |
 
 
+## LEGO ACME environment variables
+
+LEGO ACME is integrated into the container image by default.
+The container image supports LEGO environment variables for configuration.
+Check the [LEGO documentation](https://go-acme.github.io/lego/references/ref-flags/index.html) for a complete list of environment variables.
+
+
+### Required parameters
+
+| Variable                  | Default                             | Description                                                                        |
+|---------------------------|-------------------------------------|------------------------------------------------------------------------------------|
+| `LEGO_ACCEPT_TOS`         | -                                   | Must be set to `true` to enable the LEGO functionality                             |
+| `LEGO_HTTP_WEBROOT`       | /tmp/lego_web_root                  | Specified in `nginx.conf` to define the NGINX ACME web-root                        |
+
+
 ## Angie specific Environment Variables
 
 | Variable                  | Default                             | Description                                                                        |
