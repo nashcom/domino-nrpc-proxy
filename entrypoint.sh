@@ -891,6 +891,7 @@ register_variables()
   register_var NGINX_RESOLVER_IPV6 "${NGINX_RESOLVER_IPV6:-ipv6=off}"
   register_var NGINX_MAP_DEFAULT "$NGINX_MAP_DEFAULT"
   register_var NGINX_MAP_INET "$NGINX_MAP_INET"
+  register_var LEGO_HTTP_WEBROOT "$LEGO_HTTP_WEBROOT"
 }
 
 
