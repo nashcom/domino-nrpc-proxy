@@ -98,7 +98,7 @@ docker network create domino-net 2>/dev/null
 
 docker volume rm nrpc_run_secrets 2>/dev/null
 
-docker run -d --name $CONTAINER_NAME --network domino-net --ulimit nofile=65536:65536 -v "$(pwd)/cfg:/cfg" -v "nrpc_run_secrets:/run/secrets/nginx" $PORT_ARGS $NGINX_CONF_ARGS $MODE_ARGS $ACME_ARGS -e NGINX_LOG_LEVEL=$NGINX_LOG_LEVEL -e LEGO_ACCEPT_TOS=true --hostname $CONTAINER_HOSTNAME $CONTAINER_IMAGE:$IMAGE_TAG
+docker run -d --name $CONTAINER_NAME --network domino-net --ulimit nofile=65536:65536 -v "$(pwd)/cfg:/cfg" $PORT_ARGS $NGINX_CONF_ARGS $MODE_ARGS $ACME_ARGS -e NGINX_LOG_LEVEL=$NGINX_LOG_LEVEL -e LEGO_ACCEPT_TOS=true --hostname $CONTAINER_HOSTNAME $CONTAINER_IMAGE:$IMAGE_TAG
 
 sleep 2
 

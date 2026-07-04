@@ -948,7 +948,7 @@ lego_deploy_hook()
 {
   echo "[lego_cert] DEPLOY: certificate issued, deploying"
 
-  local DEPLOY_DIR="${DEPLOY_DIR:-/run/secrets/nginx}"
+  local DEPLOY_DIR="${DEPLOY_DIR:-$NGINX_CERT_DIR}"
   local CERT_NAME="${LEGO_CERT_NAME:-nginx}"
 
   mkdir -p "$DEPLOY_DIR"
@@ -970,7 +970,7 @@ lego_deploy_hook()
 
 init_tls_cert()
 {
-  local DEPLOY_DIR="${DEPLOY_DIR:-/run/secrets/nginx}"
+  local DEPLOY_DIR="${DEPLOY_DIR:-$NGINX_CERT_DIR}"
 
   if [ ! -d "$DEPLOY_DIR" ]; then
     echo "No certiificate directory found: $DEPLOY_DIR"
