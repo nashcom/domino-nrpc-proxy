@@ -83,6 +83,9 @@ lego_deploy_hook()
   cp "$LEGO_PATH/certificates/${CERT_NAME}.key" "$NGINX_CERT_DIR/tls.key"
 
   secure_tls_deploy "$NGINX_CERT_DIR/tls.crt" "$NGINX_CERT_DIR/tls.key"
+
+  header "LEGO Certificates"
+  /lego certificates list
 }
 
 

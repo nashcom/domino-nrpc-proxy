@@ -187,11 +187,40 @@ move_file()
 }
 
 
+show_cert()
+{
+  if [ -z "$1" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$1" ]; then
+    return 0
+  fi
+
+  local SAN=$(openssl x509 -in "$1" -noout -ext subjectAltName | grep -E 'DNS:|IP Address:' | xargs )
+  local SUBJECT=$(openssl x509 -in "$1" -noout -subject | cut -d '=' -f 2- )
+  local ISSUER=$(openssl x509 -in "$1" -noout -issuer | cut -d '=' -f 2- )
+  local EXPIRATION=$(openssl x509 -in "$1" -noout -enddate | cut -d '=' -f 2- )
+  local FINGERPRINT=$(openssl x509 -in "$1" -noout -fingerprint | cut -d '=' -f 2- )
+  local SERIAL=$(openssl x509 -in "$1" -noout -serial | cut -d '=' -f 2- )
+
+  echo "SAN         : $SAN"
+  echo "Subject     : $SUBJECT"
+  echo "Issuer      : $ISSUER"
+  echo "Expiration  : $EXPIRATION"
+  echo "Fingerprint : $FINGERPRINT"
+  echo "Serial      : $SERIAL"
+  echo "File        : $1"
+  echo
+}
+
+
 nginx_reload()
 {
   header "NGINX config reload"
+  show_cert "$NGINX_CERT_DIR/tls.crt"
+
   "$BIN" -s reload -p "$NGINX_CFG_DIR" -c "$NGINX_CFG"
-  echo
 }
 
 
@@ -272,19 +301,6 @@ update_cfg()
 }
 
 
-nginx_check_cfg_reload()
-{
-  CONFIG_UPDATED=0
-  update_cfg
-
-  if [ "$CONFIG_UPDATED" != "1" ]; then
-    return 0
-  fi
-
-  nginx_reload
-}
-
-
 nginx_start()
 {
   CONFIG_UPDATED=0
@@ -321,32 +337,16 @@ nginx_start()
 }
 
 
-show_cert()
+nginx_check_cfg_reload()
 {
-  if [ -z "$1" ]; then
+  CONFIG_UPDATED=0
+  update_cfg
+
+  if [ "$CONFIG_UPDATED" != "1" ]; then
     return 0
   fi
 
-  if [ ! -e "$1" ]; then
-    return 0
-  fi
-
-  local SAN=$(openssl x509 -in "$1" -noout -ext subjectAltName | grep -E 'DNS:|IP Address:' | xargs )
-  local SUBJECT=$(openssl x509 -in "$1" -noout -subject | cut -d '=' -f 2- )
-  local ISSUER=$(openssl x509 -in "$1" -noout -issuer | cut -d '=' -f 2- )
-  local EXPIRATION=$(openssl x509 -in "$1" -noout -enddate | cut -d '=' -f 2- )
-  local FINGERPRINT=$(openssl x509 -in "$1" -noout -fingerprint | cut -d '=' -f 2- )
-  local SERIAL=$(openssl x509 -in "$1" -noout -serial | cut -d '=' -f 2- )
-
-  echo
-  echo "SAN         : $SAN"
-  echo "Subject     : $SUBJECT"
-  echo "Issuer      : $ISSUER"
-  echo "Expiration  : $EXPIRATION"
-  echo "Fingerprint : $FINGERPRINT"
-  echo "Serial      : $SERIAL"
-  echo "File        : $1"
-  echo
+  nginx_reload
 }
 
 
@@ -400,6 +400,15 @@ copy_runtime_secrets()
     copy_if_newer "$SRC_FILE" "$DST_FILE"
 
   done < <(find "$1" -type f -print0)
+}
+
+
+set_cert_updated()
+{
+  local NOW=$(date +%s)
+
+  CERTS_LAST_UPDATED="$NOW"
+  echo "$NOW" > "$CERTS_LAST_UPDATE_CHECK_FILE"
 }
 
 
@@ -466,6 +475,7 @@ cert_update()
     echo
     echo "Certificate Update"
     echo "------------------"
+    echo
     show_cert "$NEW_PEM"
 
   else
@@ -648,8 +658,7 @@ cert_update_check()
       return 0
     fi
 
-    CERTS_LAST_UPDATED="$EPOCH"
-    echo "$EPOCH" > "$CERTS_LAST_UPDATE_CHECK_FILE"
+    set_cert_updated
     log "Certificate/Key update detected in $NGINX_CERT_DIR"
 
     CERT_UPDATE_COUNT=$((CERT_UPDATE_COUNT + 1))
@@ -948,7 +957,7 @@ secure_tls_deploy()
 }
 
 
-init_tls_cert()
+generate_self_signed()
 {
   if [ ! -d "$NGINX_CERT_DIR" ]; then
     echo "No certiificate found in $NGINX_CERT_DIR"
@@ -1078,9 +1087,6 @@ sleep "${STARTUP_DELAY:-0}"
 
 if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
   lego_configure
-
-  # Make sure we always have a cert and key
-  init_tls_cert
 fi
 
 # Copy TLS certs and keys first
@@ -1090,10 +1096,30 @@ if [ -n "$CERTMGR_HOST" ]; then
   wait_for_tls_config
 fi
 
+# LEGO ACME is tiggered by accepting terms of services
+
+if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
+
+  if [ -x /lego ]; then
+    lego_request run
+  else
+    echo "LEGO not installed"
+    export LEGO_ACCEPT_TOS=
+  fi
+
+  # Make sure we always have a cert and key
+  generate_self_signed
+
+else
+  echo "Info: LEGO ACME is disabled"
+fi
+
 # Set first cert deployment time after getting certs and before starting NGINX
-CERTS_LAST_UPDATED=$(date +%s)
+set_cert_updated
+
 
 EPOCH=$(date +%s)
+
 nginx_start || true
 process_loop || true
 
@@ -1109,20 +1135,8 @@ echo
 
 dump_file "$NGINX_CFG"
 
-# LEGO ACME is tiggered by accepting terms of services
-
-if [ "$LEGO_ACCEPT_TOS" = "true" ]; then
-
-  if [ -x /lego ]; then
-    lego_request run
-  else
-    echo "LEGO not installed"
-    export LEGO_ACCEPT_TOS=
-  fi
-
-else
-  echo "Info: LEGO ACME is disabled"
-fi
+header "Certificate"
+show_cert "$NGINX_CERT_DIR/tls.crt"
 
 RUNNING=1
 trap 'RUNNING=0' TERM INT
