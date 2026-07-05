@@ -254,7 +254,7 @@ update_cfg()
   log_debug "ENV_VARS: $ENV_VARS"
 
   header "Environment"
-  env
+  env | sort
   echo
 
   mkdir -p "$CONFIG_RELEASE_DIR"
@@ -918,7 +918,7 @@ lego_configure()
     export LEGO_DOMAINS="${LEGO_DOMAINS:-$(hostname -f)}"
   fi
 
-  export LEGO_SERVER="${LEGO_SERVER:-letsencrypt-staging}"
+  export LEGO_SERVER="${LEGO_SERVER:-letsencrypt}"
   export LEGO_HTTP="${LEGO_HTTP:-true}"
   export LEGO_KEY_TYPE="${LEGO_KEY_TYPE:-EC256}"
   export LEGO_ACCEPT_TOS="${LEGO_ACCEPT_TOS:-true}"
@@ -1034,7 +1034,7 @@ cert_renew_check()
 log_debug "--- entrypoint.sh ---"
 
 header "Environment variables"
-env
+env | sort
 echo
 
 # Set more paranoid umask to ensure files can be only read by user

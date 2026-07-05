@@ -38,7 +38,7 @@ for arg in "$@"; do
     -debug) add_arg "-e DEBUG_SCRIPT=1" ;;
     -noconfig) NO_CONFIG=1 ;;
     -nosecret) NO_SECRET=1 ;;
-    -lego) LEGO_OPTIONS="-e LEGO_ACCEPT_TOS=true -p 80:80" ;;
+    -lego) LEGO_OPTIONS="-e LEGO_ACCEPT_TOS=true -e LEGO_SERVER=letsencrypt-staging -p 80:80" ;;
     -entrypoint|-entry) add_arg "-v "$(pwd)/entrypoint.sh:/entrypoint.sh"" ;;
     -certmgr=*) CERTMGR_HOST="$(echo "$arg" | cut -f2 -d= -s)" ;;
 

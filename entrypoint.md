@@ -62,6 +62,7 @@ Check the [LEGO documentation](https://go-acme.github.io/lego/references/ref-fla
 |---------------------------|-------------------------------------|------------------------------------------------------------------------------------|
 | `LEGO_ACCEPT_TOS`         | -                                   | Must be set to `true` to enable the LEGO functionality                             |
 | `LEGO_HTTP_WEBROOT`       | /tmp/lego_web_root                  | Specified in `nginx.conf` to define the NGINX ACME web-root                        |
+| `LEGO_SERVER`             | letsencrypt                         | ACME provider URL or short-cut (letsencrypt-staging, letsencrypt, ...)             |
 
 
 ## Angie specific Environment Variables

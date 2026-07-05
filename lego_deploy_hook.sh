@@ -84,7 +84,7 @@ lego_deploy_hook()
 
   secure_tls_deploy "$NGINX_CERT_DIR/tls.crt" "$NGINX_CERT_DIR/tls.key"
 
-  header "LEGO Certificates"
+  header "LEGO ACME Certificates"
   /lego certificates list
 }
 
