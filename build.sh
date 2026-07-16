@@ -9,6 +9,22 @@ TARGET=nginx
 
 . ./current_version.txt
 
+
+usage()
+{
+   echo
+   echo "Build Parameters"
+   echo "----------------"
+   echo
+   echo "-alpine        Use Alpine as the base image (default)"
+   echo "-wolfi         Use Chainguard Wolfi image as the base image"
+   echo "-nginx=<ver>   Build image with specified NGINX version"
+   echo "-angie         Build image with current Angie version"
+   echo "-angie=<ver>   Build image with specified Angie version"
+   echo "-no-lego       Build image without LEGO ACME support"
+   echo
+}
+
 for arg in "$@"; do
     case "$arg" in
 
@@ -39,6 +55,11 @@ for arg in "$@"; do
 
         -no-lego)
             LEGO_INSTALL="no"
+            ;;
+
+        -help|-h|-?)
+            usage
+            exit 0
             ;;
 
         *)
