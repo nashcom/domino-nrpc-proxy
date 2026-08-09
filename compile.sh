@@ -32,8 +32,15 @@ header()
 {
   echo
   print_delim
-  echo "$1"
+  echo "$@"
   print_delim
+  echo
+}
+
+log()
+{
+  echo
+  echo "$@"
   echo
 }
 
@@ -226,6 +233,18 @@ build_angie()
   make
   cp objs/angie "/$TARGET"
 }
+
+# Use up to 4 CPU cores for make
+BUILD_JOBS=$(nproc 2>/dev/null || echo 1)
+
+if (( BUILD_JOBS > 4 )); then
+  BUILD_JOBS=4
+fi
+
+export MAKEFLAGS="-j${BUILD_JOBS}"
+
+log "Parallel Build Jobs: ${BUILD_JOBS}"
+
 
 # --------------------------------------------------------------------------
 # Dispatch
