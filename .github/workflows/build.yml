@@ -91,7 +91,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ github.event.inputs.base_image || env.DEFAULT_BASE_IMAGE }}
             TARGET=nginx
-            VERSION=${{ env.NGINX_VER }}
+            TARGET_VERSION=${{ env.NGINX_VER }}
             IMAGE_NAME=Domino NRPC Proxy
             NRPC_PROXY_VER=${{ env.NRPC_PROXY_VER }}
             BUILD_DATE=${{ env.BUILD_DATE }}

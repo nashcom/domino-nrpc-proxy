@@ -10,9 +10,9 @@ export TARGET=${TARGET:-nginx}
 . /current_version.txt
 
 if [ "$TARGET" = "nginx" ]; then
-  export VERSION=${VERSION:-$NGINX_VER}
+  export TARGET_VERSION=${TARGET_VERSION:-$NGINX_VER}
 else
-  export VERSION=${VERSION:-$ANGIE_VER}
+  export TARGET_VERSION=${TARGET_VERSION:-$ANGIE_VER}
 fi
 
 # For testing: If binary and module are already present, skip build
@@ -167,10 +167,10 @@ echo "#define NRPC_MODULE_VERSION \"$NRPC_PROXY_VER\"" > /nrpc_version.h
 
 build_nginx()
 {
-  header "Building NGINX $VERSION"
+  header "Building NGINX $TARGET_VERSION"
 
-  curl -L "http://nginx.org/download/nginx-$VERSION.tar.gz" | tar xz
-  cd "nginx-$VERSION"
+  curl -L "http://nginx.org/download/nginx-$TARGET_VERSION.tar.gz" | tar xz
+  cd "nginx-$TARGET_VERSION"
 
   ./configure \
     --with-stream \
@@ -196,11 +196,11 @@ build_nginx()
 
 build_angie()
 {
-  header "Building Angie $VERSION"
+  header "Building Angie $TARGET_VERSION"
 
   git clone https://github.com/webserver-llc/angie.git
   cd angie
-  git checkout "Angie-$VERSION"
+  git checkout "Angie-$TARGET_VERSION"
 
   ./configure \
     --with-stream \

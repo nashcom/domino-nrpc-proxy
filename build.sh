@@ -73,12 +73,12 @@ done
 case "$TARGET" in
   nginx)
     TARGET_NAME=NGINX
-    VERSION=$NGINX_VER
+    TARGET_VERSION=$NGINX_VER
     IMAGE_NAME="Domino NRPC Proxy"
     ;;
   angie)
     TARGET_NAME=Angie
-    VERSION=$ANGIE_VER
+    TARGET_VERSION=$ANGIE_VER
     IMAGE_NAME="Domino NRPC Proxy (Angie)"
     ;;
 esac
@@ -100,6 +100,64 @@ header()
   echo
 }
 
+log_build_env()
+(
+  # Running in a sub shell because of . /etc/os-release
+
+  header "Host Information"
+
+  local HOST_OS="unknown"
+  local HOST_SELINUX="unknown"
+  local LIBC_VERSION="unknown"
+
+  if [[ -r /etc/os-release ]]; then
+    . /etc/os-release
+    HOST_OS="${PRETTY_NAME:-unknown}"
+  fi
+
+  if [[ -r /sys/fs/selinux/enforce ]]; then
+    if [[ "$(cat /sys/fs/selinux/enforce)" == "1" ]]; then
+      HOST_SELINUX="enforcing"
+    else
+      HOST_SELINUX="permissive"
+    fi
+  else
+    HOST_SELINUX="disabled"
+  fi
+
+  if command -v getconf >/dev/null 2>&1; then
+    LIBC_VERSION=$(getconf GNU_LIBC_VERSION 2>/dev/null || true)
+  fi
+
+  echo "Host OS            : $HOST_OS"
+  echo "Host Architecture  : $(uname -m 2>/dev/null)"
+  echo "Host Kernel        : $(uname -r 2>/dev/null)"
+  echo "Host SELinux       : $HOST_SELINUX"
+  echo "Host libc          : $LIBC_VERSION"
+
+  if command -v docker >/dev/null 2>&1; then
+    header "Docker Environment"
+    echo "Docker Client      : $(docker version --format '{{.Client.Version}}' 2>/dev/null)"
+    echo "Docker Server      : $(docker version --format '{{.Server.Version}}' 2>/dev/null)"
+    echo "Docker OS          : $(docker info --format '{{.OperatingSystem}}' 2>/dev/null)"
+    echo "Docker Arch        : $(docker info --format '{{.Architecture}}' 2>/dev/null)"
+    echo "Docker Kernel      : $(docker info --format '{{.KernelVersion}}' 2>/dev/null)"
+    echo "Docker Driver      : $(docker info --format '{{.Driver}}' 2>/dev/null)"
+
+    header "Container Information"
+
+    docker run --rm "$BASE_IMAGE" sh -c '
+      . /etc/os-release 2>/dev/null || true
+      echo "Container OS            : ${PRETTY_NAME:-unknown}"
+      echo "Container Architecture  : $(uname -m)"
+      echo "Container Kernel        : $(uname -r)"
+    '
+  fi
+
+  echo
+  echo
+)
+
 print_runtime()
 {
   hours=$((SECONDS / 3600))
@@ -116,7 +174,9 @@ print_runtime()
   echo
 }
 
-header "Building $TARGET_NAME $VERSION on $BASE_IMAGE ..."
+log_build_env
+
+header "Building $TARGET_NAME $TARGET_VERSION on $BASE_IMAGE ..."
 
 export BUILDKIT_PROGRESS=plain
 
@@ -128,13 +188,13 @@ esac
 docker build --no-cache -t domino-nrpc-proxy:$IMAGE_TAG \
   --build-arg BASE_IMAGE=$BASE_IMAGE \
   --build-arg TARGET=$TARGET \
-  --build-arg VERSION=$VERSION \
+  --build-arg TARGET_VERSION=$TARGET_VERSION \
   --build-arg IMAGE_NAME="$IMAGE_NAME" \
   --build-arg NRPC_PROXY_VER=$NRPC_PROXY_VER \
   --build-arg BUILD_DATE=$BUILD_DATE \
   --build-arg BUILDTIME="$BUILDTIME" \
   --build-arg LEGO_INSTALL="$LEGO_INSTALL" \
-  --label ${TARGET}-version=$VERSION \
+  --label ${TARGET}-version=$TARGET_VERSION \
   .
 
 echo
