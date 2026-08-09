@@ -235,16 +235,12 @@ build_angie()
 }
 
 # Use up to 4 CPU cores for make
-BUILD_JOBS=$(nproc 2>/dev/null || echo 1)
-
-if (( BUILD_JOBS > 4 )); then
-  BUILD_JOBS=4
+if [[ -z "${MAKEFLAGS:-}" ]]; then
+  BUILD_JOBS=$(nproc 2>/dev/null || echo 1)
+  (( BUILD_JOBS > 4 )) && BUILD_JOBS=4
+  export MAKEFLAGS="-j${BUILD_JOBS}"
+  log "Parallel Build Jobs: ${BUILD_JOBS}"
 fi
-
-export MAKEFLAGS="-j${BUILD_JOBS}"
-
-log "Parallel Build Jobs: ${BUILD_JOBS}"
-
 
 # --------------------------------------------------------------------------
 # Dispatch
