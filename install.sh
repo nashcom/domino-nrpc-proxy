@@ -279,6 +279,7 @@ chown root:nginx "/$TARGET"
 chown root:nginx /ngx_stream_nrpc_preread_module.so
 chown root:nginx /lego_deploy_hook.sh
 chown root:nginx -R /run/secrets
+chown root:nginx -R /cfg
 
 chmod 550 /entrypoint.sh
 chmod 550 "/$TARGET"
