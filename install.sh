@@ -4,15 +4,6 @@
 ############################################################################
 
 
-LEGO_INSTALL_PATH="${LEGO_INSTALL_PATH:-/lego}"
-
-if [ -z "$LEGO_VERSION" ]; then
-  LEGO_VERSION="5.2.2"
-  LEGO_AMD64_SHA256="018de6d3f2da09630caa2fbbe8c6aa459323ad0ac0a053d0e808268914b38a8b"
-  LEGO_ARM64_SHA256="92c9d7d2a6377cdd4702bfaf7e0f61ea167456f1686a3899a12f289fe863c49b"
-fi
-
-
 # --- Begin Helper functions ---
 
 print_delim()
@@ -228,23 +219,54 @@ DownloadAndProcess()
 
 InstallLego()
 {
+  local LEGO_INSTALL_PATH="${LEGO_INSTALL_PATH:-/lego}"
+  local LEGO_VERSION="${LEGO_VERSION:-}"
+  local LEGO_ARCH
+  local LEGO_BASE_URL
+  local LEGO_FILE
+  local LEGO_URL
+  local LEGO_SHA256
+  local LEGO_HASH
+
+  # Get latest version if not specified
+  if [ -z "$LEGO_VERSION" ]; then
+    LEGO_VERSION=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/go-acme/lego/releases/latest | sed 's#.*/v##')
+  fi
+
+  if [ -z "$LEGO_VERSION" ]; then
+    echo "Cannot determine lego version" >&2
+    return 1
+  fi
+
+  # Determine architecture
   case "$(uname -m)" in
     x86_64|amd64)
       LEGO_ARCH=amd64
-      LEGO_SHA256=$LEGO_AMD64_SHA256
       ;;
     aarch64|arm64)
       LEGO_ARCH=arm64
-      LEGO_SHA256=$LEGO_ARM64_SHA256
       ;;
     *)
       echo "Unsupported architecture: $(uname -m)" >&2
-      exit 1
+      return 1
       ;;
   esac
 
-  local LEGO_URL="https://github.com/go-acme/lego/releases/download/v${LEGO_VERSION}/lego_v${LEGO_VERSION}_linux_${LEGO_ARCH}.tar.gz"
-  local LEGO_HASH=$(DownloadAndProcess "$LEGO_URL" "tar -xzO lego > $LEGO_INSTALL_PATH" "$LEGO_SHA256")
+  LEGO_BASE_URL="https://github.com/go-acme/lego/releases/download/v${LEGO_VERSION}"
+  LEGO_FILE="lego_v${LEGO_VERSION}_linux_${LEGO_ARCH}.tar.gz"
+  LEGO_URL="${LEGO_BASE_URL}/${LEGO_FILE}"
+
+  # Get SHA256 from the official release checksum file
+  LEGO_SHA256=$(curl -fsSL "${LEGO_BASE_URL}/lego_${LEGO_VERSION}_checksums.txt" | awk -v file="$LEGO_FILE" '$2 == file {print $1}')
+
+  if [ -z "$LEGO_SHA256" ]; then
+    echo "Cannot determine SHA256 for $LEGO_FILE" >&2
+    return 1
+  fi
+
+  echo "Installing lego $LEGO_VERSION ($LEGO_ARCH)"
+
+  LEGO_HASH=$(DownloadAndProcess "$LEGO_URL" "tar -xzO lego > $LEGO_INSTALL_PATH" "$LEGO_SHA256") || return 1
 
   chmod 755 "$LEGO_INSTALL_PATH"
 
