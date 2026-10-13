@@ -16,7 +16,7 @@ else
 fi
 
 # For testing: If binary and module are already present, skip build
-if [ -e "/$TARGET" ] && [ -e /ngx_stream_nrpc_preread_module.so ]; then
+if [ -e "/$TARGET" ] && [ -e /ngx_stream_nrpc_preread_module.so ] && { [ "$GEOIP_INSTALL" = "no" ] || { [ -e /ngx_http_geoip2_module.so ] && [ -e /ngx_stream_geoip2_module.so ]; }; }; then
   echo "$TARGET and module already present - No compile required"
   exit 0
 fi
@@ -159,11 +159,21 @@ check_linux_update
 case "$ID" in
   wolfi|alpine)
     install_packages gzip build-base curl pcre-dev zlib-dev openssl-dev git
+    GEOIP_DEV_PACKAGE=libmaxminddb-dev
     ;;
   *)
     install_packages tar gzip gcc make zlib-devel pcre2-devel openssl-devel curl git
+    GEOIP_DEV_PACKAGE=libmaxminddb-devel
     ;;
 esac
+
+# GeoIP2 modules are optional (build.sh -no-geoip)
+if [ "$GEOIP_INSTALL" = "no" ]; then
+  GEOIP_CONFIGURE=
+else
+  install_package "$GEOIP_DEV_PACKAGE"
+  GEOIP_CONFIGURE="--add-dynamic-module=/ngx_http_geoip2_module"
+fi
 
 # Generate version header
 echo "#define NRPC_MODULE_VERSION \"$NRPC_PROXY_VER\"" > /nrpc_version.h
@@ -172,19 +182,45 @@ echo "#define NRPC_MODULE_VERSION \"$NRPC_PROXY_VER\"" > /nrpc_version.h
 # Build functions
 # --------------------------------------------------------------------------
 
+# GeoIP2 HTTP + stream modules (https://github.com/leev/ngx_http_geoip2_module)
+# Set GEOIP2_MODULE_VER to a tag to pin a version. Default is the current default branch.
+fetch_geoip2()
+{
+  [ "$GEOIP_INSTALL" = "no" ] && return 0
+
+  header "Fetching ngx_http_geoip2_module"
+  git clone --depth 1 ${GEOIP2_MODULE_VER:+--branch "$GEOIP2_MODULE_VER"} https://github.com/leev/ngx_http_geoip2_module.git /ngx_http_geoip2_module
+}
+
 build_nginx()
 {
   header "Building NGINX $TARGET_VERSION"
+
+  fetch_geoip2
 
   curl -L "http://nginx.org/download/nginx-$TARGET_VERSION.tar.gz" | tar xz
   cd "nginx-$TARGET_VERSION"
 
   ./configure \
+    --with-compat \
     --with-stream \
     --add-dynamic-module=.. \
+    $GEOIP_CONFIGURE \
     --with-stream_ssl_preread_module \
+    --with-stream_ssl_module \
+    --with-stream_realip_module \
     --with-http_ssl_module \
     --with-http_v2_module \
+    --with-http_v3_module \
+    --with-http_realip_module \
+    --with-http_auth_request_module \
+    --with-http_stub_status_module \
+    --with-http_gunzip_module \
+    --with-http_gzip_static_module \
+    --with-http_sub_module \
+    --with-http_slice_module \
+    --with-http_secure_link_module \
+    --with-threads \
  \
     --prefix=/var/$TARGET \
     --sbin-path=/$TARGET \
@@ -194,7 +230,7 @@ build_nginx()
 
   header "Building module"
   make modules
-  cp objs/ngx_stream_nrpc_preread_module.so /
+  cp objs/ngx_*_module.so /
 
   header "Building NGINX binary"
   make
@@ -205,20 +241,37 @@ build_angie()
 {
   header "Building Angie $TARGET_VERSION"
 
+  fetch_geoip2
+
   git clone https://github.com/webserver-llc/angie.git
   cd angie
   git checkout "Angie-$TARGET_VERSION"
 
   ./configure \
+    --with-compat \
     --with-stream \
     --add-dynamic-module=.. \
+    $GEOIP_CONFIGURE \
     --with-stream_ssl_preread_module \
+    --with-stream_ssl_module \
+    --with-stream_realip_module \
     --with-stream_mqtt_preread_module \
     --with-stream_rdp_preread_module \
+    --with-stream_acme_module \
     --with-http_ssl_module \
     --with-http_v2_module \
+    --with-http_v3_module \
     --with-http_acme_module \
- \
+    --with-http_realip_module \
+    --with-http_auth_request_module \
+    --with-http_stub_status_module \
+    --with-http_gunzip_module \
+    --with-http_gzip_static_module \
+    --with-http_sub_module \
+    --with-http_slice_module \
+    --with-http_secure_link_module \
+    --with-threads \
+    \
     --prefix=/var/$TARGET \
     --sbin-path=/$TARGET \
     --conf-path=/tmp/$TARGET/$TARGET.conf \
@@ -227,7 +280,7 @@ build_angie()
 
   header "Building module"
   make modules
-  cp objs/ngx_stream_nrpc_preread_module.so /
+  cp objs/ngx_*_module.so /
 
   header "Building Angie binary"
   make

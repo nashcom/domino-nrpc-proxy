@@ -7,6 +7,7 @@ FROM $BASE_IMAGE AS build
 
 ARG TARGET
 ARG TARGET_VERSION
+ARG GEOIP_INSTALL
 
 ENV TARGET=$TARGET
 ENV TARGET_VERSION=$TARGET_VERSION
@@ -32,11 +33,14 @@ ARG NRPC_PROXY_VER
 ARG BUILD_DATE
 ARG BUILDTIME
 ARG LEGO_INSTALL
+ARG GEOIP_INSTALL
 
 ENV TARGET=$TARGET
 
 # Copy build artifacts
-COPY --from=build /$TARGET /ngx_stream_nrpc_preread_module.so /entrypoint.sh /lego_deploy_hook.sh /
+COPY --from=build /$TARGET /entrypoint.sh /lego_deploy_hook.sh /
+# Wildcard: NRPC module always, GeoIP2 modules only when built (-no-geoip skips them)
+COPY --from=build /ngx_*_module.so /
 COPY --from=build /cfg /cfg
 
 # Install + permissions

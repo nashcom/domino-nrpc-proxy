@@ -24,7 +24,9 @@ The secrets run-time directory is `/tls`. Certificates and keys are copied from 
 | `METRICS_FILE`            | `/tmp/nginx-metrics.prom`           | Path of the Prometheus metrics output file                                         |
 | `INTERVAL_SECONDS`        | `10`                                | Main poll loop interval in seconds                                                 |
 | `CERT_CHECK_INTERVAL`     | `30`                                | Minimum seconds between CertMgr remote checks                                      |
+| `GEOIP_CHECK_INTERVAL`    | `600`                               | Minimum seconds between GeoIP database change checks                               |
 | `CONFIG_KEEP_RELEASES`    | `3`                                 | Number of old config release directories to retain                                 |
+| `GEOIP_DB_DIR`            | `/var/lib/GeoIP`                    | GeoIP2 database directory: watched for `*.mmdb` changes (nginx reload) and available to config templates as `$GEOIP_DB_DIR` |
 | `PROXY_MODE`              | `nrpc`                              | Template set to load when no mounted config is present (`nrpc`, `stream`, `https`) |
 | `CERTMGR_HOST`            |                                     | Hostname of the Domino CertMgr server; enables remote cert download when set       |
 | `DEBUG_SCRIPT`            |                                     | Set to any non-zero value to enable `log_debug` output                             |
@@ -81,6 +83,7 @@ Check the [LEGO documentation](https://go-acme.github.io/lego/references/ref-fla
 |----------------------------|----------------------------------------------------------|
 | `/run/config/nginx`        | Mount point for externally supplied config templates     |
 | `/run/secrets/nginx`       | Mount point for TLS certificates and keys                |
+| `/var/lib/GeoIP`           | GeoIP2 databases (`*.mmdb`), laid down by a sidecar      |
 | `/tmp/ngx_cfg`             | Working directory for rendered config releases           |
 | `/tmp/ngx_cfg/current`     | Symlink pointing at the active config release directory  |
 | `/tmp/ngx_cfg/<timestamp>` | Timestamped immutable config release directory           |
@@ -153,6 +156,24 @@ Polled every `CERT_CHECK_INTERVAL` seconds:
 
 ---
 
+## GeoIP Database Updates
+
+A sidecar container is expected to lay down GeoIP2 databases (`*.mmdb`) in `GEOIP_DB_DIR` (default `/var/lib/GeoIP`, the same default as nshgeoip and `geoipupdate`, a volume shared with the sidecar). The GeoIP2 modules open the databases when the configuration is loaded, so a new database only takes effect after an nginx reload.
+
+`geoip_update_check` is called on every main-loop iteration, but only does work once `GEOIP_CHECK_INTERVAL` seconds (default 600) have passed since the last check:
+
+1. A single `find` looks for `*.mmdb` files with a change time (`-cnewer`) newer than the marker file `/tmp/ngx_cfg/geoip_last_update_checked.txt`. Change time is used instead of modification time, because tools like `geoipupdate` set the mtime to the build date of the database, which can be older than the marker. A rename or copy always updates the change time.
+2. The marker is touched just before nginx starts, so databases present at startup do not cause a reload.
+3. If a file is found, the marker is touched, `GEOIP_UPDATE_COUNT` is incremented and nginx is reloaded.
+
+As with certificates, a removed database is not detected (nothing newer remains).
+
+`/var/lib/GeoIP` is created in the image (owned by `nginx`, like `/tls`) as the default mount point. To use another location, mount the volume there and set `GEOIP_DB_DIR`. The variable is registered for `envsubst`, so config templates should reference databases as `$GEOIP_DB_DIR/<name>.mmdb` and the watcher and nginx always use the same path.
+
+The sidecar should write to a temporary name and rename the file into place, so a half-written database is never picked up. Atomic replacement is what `geoipupdate` does. If a reload picks up a broken file, nginx keeps running with the old workers, and the next file change triggers another reload.
+
+---
+
 ## Prometheus Metrics
 
 Written atomically to `METRICS_FILE` (default `/tmp/nginx-metrics.prom`) each main-loop iteration via a temporary file + `mv`.
@@ -167,6 +188,8 @@ Written atomically to `METRICS_FILE` (default `/tmp/nginx-metrics.prom`) each ma
 | `DominoProxy_cert_last_updated_timestamp`   | gauge | Unix timestamp of last certificate update  |
 | `DominoProxy_cert_update_count`             | gauge | Cumulative certificate updates             |
 | `DominoProxy_cert_update_errors`            | gauge | Cumulative certificate key-mismatch errors |
+| `DominoProxy_geoip_last_updated_timestamp`  | gauge | Unix timestamp of last GeoIP DB reload (0 = none) |
+| `DominoProxy_geoip_update_count`            | gauge | Cumulative GeoIP database reloads          |
 | `DominoProxy_stat_update_timestamp`         | gauge | Unix timestamp of the metrics write        |
 
 ---
@@ -182,6 +205,8 @@ process_loop  (first call, then every INTERVAL_SECONDS)
 │   └─ if yes: update_cfg → nginx_reload
 ├─ cert_update_check
 │   └─ file-watch or CertMgr poll → nginx_reload if changed
+├─ geoip_update_check
+│   └─ *.mmdb newer than marker → nginx_reload
 └─ write_metrics_file
 
 trap SIGTERM/SIGINT → RUNNING=0 → stop_nginx

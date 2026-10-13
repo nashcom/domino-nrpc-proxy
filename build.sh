@@ -22,6 +22,7 @@ usage()
    echo "-angie         Build image with current Angie version"
    echo "-angie=<ver>   Build image with specified Angie version"
    echo "-no-lego       Build image without LEGO ACME support"
+   echo "-no-geoip      Build image without GeoIP2 modules"
    echo
 }
 
@@ -55,6 +56,10 @@ for arg in "$@"; do
 
         -no-lego)
             LEGO_INSTALL="no"
+            ;;
+
+        -no-geoip)
+            GEOIP_INSTALL="no"
             ;;
 
         -help|-h|-?)
@@ -194,6 +199,7 @@ docker build --no-cache -t domino-nrpc-proxy:$IMAGE_TAG \
   --build-arg BUILD_DATE=$BUILD_DATE \
   --build-arg BUILDTIME="$BUILDTIME" \
   --build-arg LEGO_INSTALL="$LEGO_INSTALL" \
+  --build-arg GEOIP_INSTALL="$GEOIP_INSTALL" \
   --label ${TARGET}-version=$TARGET_VERSION \
   .
 

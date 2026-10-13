@@ -286,9 +286,18 @@ else
   install_packages hostname gettext bind-utils findutils shadow-utils openssl curl
 fi
 
+if [ "$GEOIP_INSTALL" != "no" ]; then
+  install_package libmaxminddb
+fi
+
 useradd nginx -U
 
 create_dir /tls
+
+if [ "$GEOIP_INSTALL" != "no" ]; then
+  create_dir /var/lib/GeoIP
+fi
+
 create_dir /var/nginx
 create_dir /tmp/nginx
 create_dir /tmp/angie
@@ -298,14 +307,14 @@ create_dir /run/secrets/nginx
 
 chown root:nginx /entrypoint.sh
 chown root:nginx "/$TARGET"
-chown root:nginx /ngx_stream_nrpc_preread_module.so
+chown root:nginx /ngx_*_module.so
 chown root:nginx /lego_deploy_hook.sh
 chown root:nginx -R /run/secrets
 chown root:nginx -R /cfg
 
 chmod 550 /entrypoint.sh
 chmod 550 "/$TARGET"
-chmod 550 /ngx_stream_nrpc_preread_module.so
+chmod 550 /ngx_*_module.so
 chmod 550 /lego_deploy_hook.sh
 chmod 770 -R /run/secrets
 

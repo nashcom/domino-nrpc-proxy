@@ -13,6 +13,7 @@ METRICS_FILE="${METRICS_FILE:-/tmp/nginx-metrics.prom}"
 NGINX_CFG_TEMPLATE_DIR="/run/config/nginx"
 NGINX_CERT_CFG_DIR="/run/secrets/nginx"
 NGINX_CERT_DIR="/tls"
+GEOIP_DB_DIR="${GEOIP_DB_DIR:-/var/lib/GeoIP}"
 
 NGINX_CFG_BASE_DIR=/tmp/ngx_cfg
 NGINX_CFG_DIR="$NGINX_CFG_BASE_DIR/current"
@@ -35,6 +36,12 @@ CERT_LAST_CHECK_EPOCH=0
 CERT_UPDATE_COUNT=0
 CERT_UPDATE_ERRORS=0
 
+GEOIP_CHECK_INTERVAL="${GEOIP_CHECK_INTERVAL:-600}"
+GEOIP_LAST_CHECK_EPOCH=0
+GEOIP_LAST_UPDATE_CHECK_FILE="$NGINX_CFG_BASE_DIR/geoip_last_update_checked.txt"
+GEOIP_LAST_UPDATED=0
+GEOIP_UPDATE_COUNT=0
+
 LINUX_PRETTY_NAME=$(grep PRETTY_NAME= /etc/os-release | cut -d= -f2 | xargs)
 
 log()
@@ -51,7 +58,7 @@ log_space()
 }
 
 
-/log_error()
+log_error()
 {
   log "ERROR: $@"
 }
@@ -366,12 +373,6 @@ copy_if_newer()
 
     return 0
 }
-
-log_debug()
-{
-  echo "$@"
-}
-
 
 copy_runtime_secrets()
 {
@@ -697,6 +698,39 @@ cert_update_check()
 }
 
 
+set_geoip_checked()
+{
+  # The file time is used for the comparison. The epoch in the file is for humans
+  date +%s > "$GEOIP_LAST_UPDATE_CHECK_FILE"
+}
+
+
+geoip_update_check()
+{
+  # EPOCH is set once per process_loop iteration
+  if [ $((EPOCH - GEOIP_LAST_CHECK_EPOCH)) -lt "$GEOIP_CHECK_INTERVAL" ]; then
+    return 0
+  fi
+
+  GEOIP_LAST_CHECK_EPOCH="$EPOCH"
+
+  # -cnewer (inode change time) instead of -newer: Tools like geoipupdate set the mtime to the
+  # build date of the database, which can be older than the marker. A rename or copy always updates ctime.
+  local FILES_MODIFIED=$(find "$GEOIP_DB_DIR" -type f -name "*.mmdb" -cnewer "$GEOIP_LAST_UPDATE_CHECK_FILE" -print -quit 2>/dev/null)
+
+  if [ -z "$FILES_MODIFIED" ]; then
+    return 0
+  fi
+
+  set_geoip_checked
+  GEOIP_LAST_UPDATED=$(date +%s)
+  GEOIP_UPDATE_COUNT=$((GEOIP_UPDATE_COUNT + 1))
+
+  log "GeoIP database update detected in $GEOIP_DB_DIR"
+  nginx_reload
+}
+
+
 wait_for_tls_config()
 {
   while true
@@ -807,6 +841,9 @@ write_metrics_file()
   write_metric "cert_update_count" "gauge" "Number of certificate updates" "$CERT_UPDATE_COUNT"
   write_metric "cert_update_errors" "gauge" "Number of certificate update errors" "$CERT_UPDATE_ERRORS"
 
+  write_metric "geoip_last_updated_timestamp" "gauge" "GeoIP databases last updated" "$GEOIP_LAST_UPDATED"
+  write_metric "geoip_update_count" "gauge" "Number of GeoIP database updates" "$GEOIP_UPDATE_COUNT"
+
   write_metric "stat_update_timestamp" "gauge" "Stats last updated" "$EPOCH"
 
   mv "$TMP_FILE" "$METRICS_FILE"
@@ -834,6 +871,7 @@ process_loop()
   fi
 
   cert_update_check
+  geoip_update_check
   write_metrics_file
 }
 
@@ -878,6 +916,7 @@ register_variables()
   : > "$NGINX_ENV_VAR_FILE"
 
   register_var CERTMGR_HOST "$CERTMGR_HOST"
+  register_var GEOIP_DB_DIR "$GEOIP_DB_DIR"
   register_var DOMINO_PORT "${DOMINO_PORT:-1352}"
   register_var DOMINO_DEFAULT_ORG "${DOMINO_DEFAULT_ORG:-default}"
 
@@ -1117,6 +1156,8 @@ fi
 # Set first cert deployment time after getting certs and before starting NGINX
 set_cert_updated
 
+# Databases present at startup are loaded by the first start. Only later changes trigger a reload
+set_geoip_checked
 
 EPOCH=$(date +%s)
 
@@ -1131,6 +1172,8 @@ echo "Interval (sec)        :  $INTERVAL_SECONDS"
 echo "Cert Check Interval   :  $CERT_CHECK_INTERVAL"
 echo "Config Directory      :  $NGINX_CFG_TEMPLATE_DIR"
 echo "Certificate Directory :  $NGINX_CERT_DIR"
+echo "GeoIP Directory       :  $GEOIP_DB_DIR"
+echo "GeoIP Check Interval  :  $GEOIP_CHECK_INTERVAL"
 echo
 
 dump_file "$NGINX_CFG"
