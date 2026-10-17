@@ -42,6 +42,7 @@ COPY --from=build /$TARGET /entrypoint.sh /lego_deploy_hook.sh /
 # Wildcard: NRPC module always, GeoIP2 modules only when built (-no-geoip skips them)
 COPY --from=build /ngx_*_module.so /
 COPY --from=build /cfg /cfg
+COPY --from=build /mime.types /etc/nginx/mime.types
 
 # Install + permissions
 COPY install.sh /

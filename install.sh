@@ -318,9 +318,6 @@ chmod 550 /ngx_*_module.so
 chmod 550 /lego_deploy_hook.sh
 chmod 770 -R /run/secrets
 
-chown root:nginx /*_template.conf
-chmod 440 /*_template.conf
-
 check_linux_update
 clean_linux_repo_cache
 

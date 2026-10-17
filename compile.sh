@@ -192,6 +192,7 @@ fetch_geoip2()
   git clone --depth 1 ${GEOIP2_MODULE_VER:+--branch "$GEOIP2_MODULE_VER"} https://github.com/leev/ngx_http_geoip2_module.git /ngx_http_geoip2_module
 }
 
+
 build_nginx()
 {
   header "Building NGINX $TARGET_VERSION"
@@ -226,7 +227,8 @@ build_nginx()
     --sbin-path=/$TARGET \
     --conf-path=/tmp/$TARGET/$TARGET.conf \
     --error-log-path=stderr \
-    --pid-path=/var/$TARGET/$TARGET.pid
+    --http-log-path=/dev/null \
+    --pid-path=/tmp/$TARGET/$TARGET.pid
 
   header "Building module"
   make modules
@@ -235,6 +237,7 @@ build_nginx()
   header "Building NGINX binary"
   make
   cp objs/nginx "/$TARGET"
+  cp conf/mime.types /
 }
 
 build_angie()
@@ -276,7 +279,8 @@ build_angie()
     --sbin-path=/$TARGET \
     --conf-path=/tmp/$TARGET/$TARGET.conf \
     --error-log-path=stderr \
-    --pid-path=/var/$TARGET/$TARGET.pid
+    --http-log-path=/dev/null \
+    --pid-path=/tmp/$TARGET/$TARGET.pid
 
   header "Building module"
   make modules
@@ -285,6 +289,7 @@ build_angie()
   header "Building Angie binary"
   make
   cp objs/angie "/$TARGET"
+  cp conf/mime.types /
 }
 
 # Use up to 4 CPU cores for make
