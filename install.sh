@@ -133,7 +133,6 @@ check_linux_update()
 
     /usr/bin/apt-get update -y
 
-    # Needed by Astra Linux, Ubuntu and Debian. Should be installed before updating Linux but after updating the repo!
     if [ -x /usr/bin/apt-get ]; then
       install_package apt-utils
     fi
@@ -280,10 +279,10 @@ InstallLego()
 check_linux_update
 
 if [ -x /sbin/apk ]; then
-  # Alpine package names are different
-  install_packages gettext findutils shadow pcre bash openssl curl
+  # Alpine / Wolfi
+  install_packages gettext findutils shadow pcre bash openssl curl libcap-utils
 else
-  install_packages hostname gettext bind-utils findutils shadow-utils openssl curl
+  install_packages hostname gettext bind-utils findutils shadow-utils openssl curl libcap
 fi
 
 if [ "$GEOIP_INSTALL" != "no" ]; then
@@ -317,6 +316,19 @@ chmod 550 "/$TARGET"
 chmod 550 /ngx_*_module.so
 chmod 550 /lego_deploy_hook.sh
 chmod 770 -R /run/secrets
+
+
+# Allow nginx/angie bind on restricted ports
+
+header "NET_BIND_SERVICE capability"
+
+for BIN in /nginx /angie; do
+  if [ -x "$BIN" ]; then
+    echo "Setting NET_BIND_SERVICE capability on $BIN"
+    setcap cap_net_bind_service=+ep "$BIN"
+    getcap "$BIN"
+  fi
+done
 
 check_linux_update
 clean_linux_repo_cache
