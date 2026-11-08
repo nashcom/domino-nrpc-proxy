@@ -6,6 +6,7 @@
 # Defaults
 BASE_IMAGE="alpine"
 TARGET=nginx
+DOCKER_FILE=dockerfile
 
 . ./current_version.txt
 
@@ -28,6 +29,10 @@ usage()
 
 for arg in "$@"; do
     case "$arg" in
+
+        -static)
+            DOCKER_FILE="dockerfile.static"
+            ;;
 
         -alpine)
             BASE_IMAGE="alpine"
@@ -76,16 +81,21 @@ for arg in "$@"; do
 done
 
 case "$TARGET" in
+
   nginx)
+
     TARGET_NAME=NGINX
     TARGET_VERSION=$NGINX_VER
     IMAGE_NAME="Domino NRPC Proxy"
     ;;
+
   angie)
+
     TARGET_NAME=Angie
     TARGET_VERSION=$ANGIE_VER
     IMAGE_NAME="Domino NRPC Proxy (Angie)"
     ;;
+
 esac
 
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -190,18 +200,35 @@ case "$TARGET" in
   angie) IMAGE_TAG=angie ;;
 esac
 
-docker build --no-cache -t domino-nrpc-proxy:$IMAGE_TAG \
-  --build-arg BASE_IMAGE=$BASE_IMAGE \
-  --build-arg TARGET=$TARGET \
-  --build-arg TARGET_VERSION=$TARGET_VERSION \
-  --build-arg IMAGE_NAME="$IMAGE_NAME" \
-  --build-arg NRPC_PROXY_VER=$NRPC_PROXY_VER \
-  --build-arg BUILD_DATE=$BUILD_DATE \
-  --build-arg BUILDTIME="$BUILDTIME" \
-  --build-arg LEGO_INSTALL="$LEGO_INSTALL" \
-  --build-arg GEOIP_INSTALL="$GEOIP_INSTALL" \
-  --label ${TARGET}-version=$TARGET_VERSION \
-  .
+if [ "$DOCKER_FILE" = "dockerfile.static" ]; then
+
+  docker buildx build --no-cache -f "$DOCKER_FILE" \
+    --build-arg BASE_IMAGE=$BASE_IMAGE \
+    --build-arg TARGET=$TARGET \
+    --build-arg TARGET_VERSION=$TARGET_VERSION \
+    --build-arg NRPC_PROXY_VER=$NRPC_PROXY_VER \
+    --build-arg BUILD_DATE=$BUILD_DATE \
+    --build-arg BUILDTIME="$BUILDTIME" \
+    --build-arg GEOIP_INSTALL="$GEOIP_INSTALL" \
+    --label ${TARGET}-version=$TARGET_VERSION \
+    --output type=local,dest=./dist/static/${TARGET}/$(uname -m) \
+    .
+
+else
+
+  docker build --no-cache -t domino-nrpc-proxy:$IMAGE_TAG -f "$DOCKER_FILE" \
+    --build-arg BASE_IMAGE=$BASE_IMAGE \
+    --build-arg TARGET=$TARGET \
+    --build-arg TARGET_VERSION=$TARGET_VERSION \
+    --build-arg IMAGE_NAME="$IMAGE_NAME" \
+    --build-arg NRPC_PROXY_VER=$NRPC_PROXY_VER \
+    --build-arg BUILD_DATE=$BUILD_DATE \
+    --build-arg BUILDTIME="$BUILDTIME" \
+    --build-arg LEGO_INSTALL="$LEGO_INSTALL" \
+    --build-arg GEOIP_INSTALL="$GEOIP_INSTALL" \
+    --label ${TARGET}-version=$TARGET_VERSION \
+    .
+fi
 
 echo
 print_runtime
