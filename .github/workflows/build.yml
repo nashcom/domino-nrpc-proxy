@@ -17,7 +17,7 @@ on:
       base_image:
         description: 'Base image'
         required: false
-        default: 'cgr.dev/chainguard/wolfi-base'
+        default: 'alpine'
         type: choice
         options:
           - cgr.dev/chainguard/wolfi-base
