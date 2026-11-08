@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=alpine:latest
-ARG TARGET=nginx
+ARG TARGET
 ARG TARGET_VERSION
 
 # Build stage
@@ -21,7 +21,7 @@ RUN /compile-static.sh
 
 # Artifact stage
 FROM scratch AS artifact
-ARG TARGET=nginx
+ARG TARGET
 
 # Export standalone static executable
 COPY --from=build /${TARGET} /

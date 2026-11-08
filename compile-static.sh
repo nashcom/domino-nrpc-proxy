@@ -196,16 +196,12 @@ build_nginx()
     --with-http_secure_link_module \
     --with-threads \
  \
-    --prefix=/var/$TARGET \
-    --sbin-path=/$TARGET \
-    --conf-path=/tmp/$TARGET/$TARGET.conf \
+    --prefix=/tmp/$TARGET \
+    --sbin-path=/usr/bin/$TARGET \
+    --conf-path=/etc/$TARGET/$TARGET.conf \
     --error-log-path=stderr \
     --http-log-path=/dev/null \
     --pid-path=/tmp/$TARGET/$TARGET.pid
-
-  header "Building module"
-  # make modules
-  # cp objs/ngx_*_module.so /
 
   header "Building NGINX binary"
   make
@@ -214,12 +210,13 @@ build_nginx()
   cp conf/mime.types /
 }
 
+
 build_angie()
 {
   header "Building Angie $TARGET_VERSION"
 
-  git clone https://github.com/webserver-llc/angie.git
-  cd angie
+  git clone https://github.com/webserver-llc/angie.git /angie-src
+  cd /angie-src
   git checkout "Angie-$TARGET_VERSION"
 
   ./configure \
@@ -247,16 +244,12 @@ build_angie()
     --with-http_secure_link_module \
     --with-threads \
     \
-    --prefix=/var/$TARGET \
-    --sbin-path=/$TARGET \
-    --conf-path=/tmp/$TARGET/$TARGET.conf \
+    --prefix=/tmp/$TARGET \
+    --sbin-path=/usr/bin/$TARGET \
+    --conf-path=/etc/$TARGET/$TARGET.conf \
     --error-log-path=stderr \
     --http-log-path=/dev/null \
     --pid-path=/tmp/$TARGET/$TARGET.pid
-
-  header "Building module"
-  make modules
-  cp objs/ngx_*_module.so /
 
   header "Building Angie binary"
   make

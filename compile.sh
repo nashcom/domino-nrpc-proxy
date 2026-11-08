@@ -246,8 +246,8 @@ build_angie()
 
   fetch_geoip2
 
-  git clone https://github.com/webserver-llc/angie.git
-  cd angie
+  git clone https://github.com/webserver-llc/angie.git /angie-src
+  cd /angie-src 
   git checkout "Angie-$TARGET_VERSION"
 
   ./configure \
